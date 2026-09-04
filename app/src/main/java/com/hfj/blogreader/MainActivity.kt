@@ -1,11 +1,7 @@
 package com.hfj.blogreader
 
-import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.Settings
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
@@ -37,9 +33,6 @@ class MainActivity : ComponentActivity() {
 
         crashHandler = CrashHandler(this)
 
-        // بررسی دسترسی به حافظه در اندروید 11+
-        checkStoragePermission()
-
         // بررسی وجود لاگ کرش
         val crashLog = crashHandler.getCrashLog()
         if (crashLog != null) {
@@ -50,6 +43,7 @@ class MainActivity : ComponentActivity() {
 
         // اجرای عادی برنامه
         setContent {
+            // ✅ درست: viewModel() حالا می‌داند چگونه MainViewModel را بسازد
             val viewModel: MainViewModel = viewModel()
             val fontScale by viewModel.fontScale.collectAsState()
             val navController = rememberNavController()
@@ -88,20 +82,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                }
-            }
-        }
-    }
-
-    private fun checkStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                try {
-                    val intent = android.content.Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                    intent.addCategory(android.content.Intent.CATEGORY_DEFAULT)
-                    startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(this, "لطفاً دسترسی به حافظه را فعال کنید", Toast.LENGTH_LONG).show()
                 }
             }
         }
