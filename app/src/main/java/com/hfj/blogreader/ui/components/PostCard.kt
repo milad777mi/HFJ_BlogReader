@@ -174,7 +174,7 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ========== تاریخ (به فرمت درخواستی) ==========
+                // ========== تاریخ (بدون عبارت اضافی) ==========
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -186,7 +186,7 @@ fun PostCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        post.date,
+                        post.date,  // ← فقط تاریخ، بدون "نوشته شده در"
                         fontSize = 12.sp * fontScale,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
