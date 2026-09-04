@@ -44,7 +44,6 @@ fun PostDetailScreen(
     val post = posts.find { it.id == postId }
     val fontScale = LocalFontScale.current
 
-    // برای بزرگنمایی عکس
     var showZoomDialog by remember { mutableStateOf(false) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
 
@@ -83,22 +82,21 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            // ========== فیلم با ExoPlayer ==========
+            // ========== فیلم با ExoPlayer (اصلاح‌شده) ==========
             if (post.videoUrl != null) {
-                var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
-
-                LaunchedEffect(post.videoUrl) {
-                    exoPlayer = ExoPlayer.Builder(context).build().apply {
+                // ✅ استفاده از remember برای نگهداری ExoPlayer
+                val exoPlayer = remember {
+                    ExoPlayer.Builder(context).build().apply {
                         setMediaItem(MediaItem.fromUri(Uri.parse(post.videoUrl)))
                         prepare()
                         playWhenReady = false
                     }
                 }
 
+                // ✅ آزادسازی هنگام خروج
                 DisposableEffect(Unit) {
                     onDispose {
-                        exoPlayer?.release()
-                        exoPlayer = null
+                        exoPlayer.release()
                     }
                 }
 
@@ -122,7 +120,7 @@ fun PostDetailScreen(
                 )
             }
 
-            // ========== تصاویر با قابلیت بزرگنمایی ==========
+            // ========== تصاویر با بزرگنمایی ==========
             if (post.imageUrls.isNotEmpty()) {
                 post.imageUrls.forEach { url ->
                     AsyncImage(
@@ -141,7 +139,7 @@ fun PostDetailScreen(
                 }
             }
 
-            // ========== محتوا با حفظ خطوط جدید ==========
+            // ========== محتوا ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -175,7 +173,7 @@ fun PostDetailScreen(
                     Divider()
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // فقط تاریخ (بدون بازدید)
+                    // تاریخ
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -197,7 +195,7 @@ fun PostDetailScreen(
         }
     }
 
-    // ========== دیالوگ بزرگنمایی عکس (تمام‌صفحه) ==========
+    // ========== دیالوگ بزرگنمایی عکس ==========
     if (showZoomDialog && zoomImageUrl != null) {
         Dialog(
             onDismissRequest = { showZoomDialog = false },
