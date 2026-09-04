@@ -5,7 +5,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
-import java.net.SocketTimeoutException
 
 class BlogRepository {
 
@@ -15,37 +14,23 @@ class BlogRepository {
         val allPosts = mutableListOf<Post>()
         var currentUrl = baseUrl
 
-        try {
-            while (currentUrl.isNotEmpty()) {
-                val result = fetchPage(currentUrl)
-                allPosts.addAll(result.posts)
-                currentUrl = result.nextPageUrl ?: ""
-                delay(500)
-            }
-        } catch (e: SocketTimeoutException) {
-            // خطای تایم‌اوت
-            throw Exception("⏱️ زمان اتصال به سرور به پایان رسید")
-        } catch (e: Exception) {
-            throw Exception("❌ خطا در دریافت داده: ${e.message}")
+        while (currentUrl.isNotEmpty()) {
+            val doc = Jsoup.connect(currentUrl)
+                .timeout(30000)
+                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .ignoreContentType(true)
+                .ignoreHttpErrors(true)
+                .get()
+
+            val posts = extractPosts(doc)
+            allPosts.addAll(posts)
+
+            val nextLink = doc.select("a.nextlink").first()
+            currentUrl = nextLink?.attr("href")?.let { "$baseUrl$it" } ?: ""
+            delay(500)
         }
 
         allPosts
-    }
-
-    private suspend fun fetchPage(url: String): PageResult = withContext(Dispatchers.IO) {
-        try {
-            val doc = Jsoup.connect(url)
-                .timeout(15000) // ۱۵ ثانیه تایم‌اوت
-                .get()
-            val posts = extractPosts(doc)
-            val nextPageUrl = extractNextPageUrl(doc, url)
-
-            PageResult(posts, nextPageUrl)
-        } catch (e: SocketTimeoutException) {
-            throw Exception("⏱️ زمان اتصال به سرور به پایان رسید")
-        } catch (e: Exception) {
-            throw Exception("❌ خطا در دریافت صفحه: ${e.message}")
-        }
     }
 
     private fun extractPosts(doc: org.jsoup.nodes.Document): List<Post> {
@@ -55,41 +40,37 @@ class BlogRepository {
             try {
                 val link = postElement.select("h2 a").first()
                 val postId = link?.attr("href")?.replace("/post/", "") ?: return@forEach
-                val title = link?.text() ?: ""
+                val title = link?.text()?.trim() ?: ""
 
                 val contentDiv = postElement.select(".postcontent").first()
-                val text = contentDiv?.text() ?: ""
+                val text = contentDiv?.text()?.trim() ?: ""
 
-                val imgTag = contentDiv?.select("img")?.first()
-                val imageUrl = imgTag?.attr("src")?.takeIf { it.isNotEmpty() && !it.startsWith("/img/") }
+                // استخراج همه تصاویر
+                val imageUrls = contentDiv?.select("img")?.mapNotNull { img ->
+                    img.attr("src").takeIf { it.isNotEmpty() && it.startsWith("http") }
+                } ?: emptyList()
 
+                // استخراج فیلم
                 val videoTag = contentDiv?.select("video")?.first()
                 val videoUrl = videoTag?.attr("src")?.takeIf { it.isNotEmpty() }
 
+                // تاریخ کامل + اعداد انگلیسی
                 val infoText = postElement.select(".postinfo").text()
                 val date = extractDate(infoText)
-
-                val hashtags = mutableListOf<String>()
-                postElement.select(".posttags a").forEach { tag ->
-                    hashtags.add("#${tag.text()}")
-                }
-                val inlineHashtags = extractHashtagsFromText(text)
-                hashtags.addAll(inlineHashtags)
 
                 posts.add(
                     Post(
                         id = postId,
                         title = title,
                         content = text,
-                        imageUrl = imageUrl,
+                        imageUrls = imageUrls,
                         videoUrl = videoUrl,
                         date = date,
-                        hashtags = hashtags.distinct(),
-                        views = extractViews(infoText)
+                        hashtags = emptyList(),  // ← هشتگ نداریم
+                        views = "0"
                     )
                 )
             } catch (e: Exception) {
-                // اگر یک پست خطا داد، از آن عبور می‌کنیم
                 e.printStackTrace()
             }
         }
@@ -97,38 +78,20 @@ class BlogRepository {
         return posts
     }
 
-    private fun extractHashtagsFromText(text: String): List<String> {
-        val pattern = Regex("#[\\w\\p{L}\\d_]+")
-        return pattern.findAll(text).map { it.value }.toList()
-    }
-
+    // تاریخ کامل با اعداد انگلیسی
     private fun extractDate(text: String): String {
-        val patterns = listOf(
-            Regex("(\\d{2,4}[/\\-]\\d{1,2}[/\\-]\\d{1,2})"),
-            Regex("(\\d{2,4}\\s+\\w+\\s+\\d{2,4})"),
-            Regex("(\\w+\\s+\\d{1,2}[،,،]\\s+\\d{2,4})")
-        )
-        for (pattern in patterns) {
-            val match = pattern.find(text)
-            if (match != null) return match.value
-        }
-        return "تاريخ غير محدد"
-    }
-
-    private fun extractViews(text: String): String {
-        val pattern = Regex("(\\d+[،,]?\\d*)\\s*(بازدید|نفر|view)")
+        val pattern = Regex("""نوشته شده در تاريخ (.*?) توسط""")
         val match = pattern.find(text)
-        return match?.groupValues?.get(1) ?: "0"
+        val datePart = match?.groupValues?.get(1)?.trim() ?: "تاریخ نامشخص"
+        return convertPersianNumbersToEnglish(datePart)
     }
 
-    private fun extractNextPageUrl(doc: org.jsoup.nodes.Document, currentUrl: String): String? {
-        val nextLink = doc.select("a.nextlink").first()
-        val href = nextLink?.attr("href") ?: return null
-        return if (href.startsWith("?")) "$currentUrl$href" else null
+    // تبدیل اعداد فارسی به انگلیسی
+    private fun convertPersianNumbersToEnglish(input: String): String {
+        val persianDigits = mapOf(
+            '۰' to '0', '۱' to '1', '۲' to '2', '۳' to '3', '۴' to '4',
+            '۵' to '5', '۶' to '6', '۷' to '7', '۸' to '8', '۹' to '9'
+        )
+        return input.map { persianDigits[it] ?: it }.joinToString("")
     }
-
-    private data class PageResult(
-        val posts: List<Post>,
-        val nextPageUrl: String?
-    )
 }
