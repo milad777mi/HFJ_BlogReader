@@ -32,6 +32,8 @@ object StatFetcher {
                 val jsCode = """
                     (function() {
                         var text = document.body.innerText;
+                        // حذف فضاهای اضافی
+                        text = text.replace(/\s+/g, ' ');
                         function extract(keyword) {
                             var regex = new RegExp(keyword + '\\s*[:]?\\s*(\\d+)');
                             var match = text.match(regex);
