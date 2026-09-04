@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
-import kotlinx.coroutines.flow.collectAsState   // ← این خط را اضافه کنید
+import kotlinx.coroutines.flow.collectAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
