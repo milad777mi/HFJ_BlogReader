@@ -17,7 +17,7 @@ class BlogRepository {
         while (currentUrl.isNotEmpty()) {
             val doc = Jsoup.connect(currentUrl)
                 .timeout(30000)
-                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .userAgent("Mozilla/5.0")
                 .ignoreContentType(true)
                 .ignoreHttpErrors(true)
                 .get()
@@ -43,20 +43,23 @@ class BlogRepository {
                 val title = link?.text()?.trim() ?: ""
 
                 val contentDiv = postElement.select(".postcontent").first()
-                val text = contentDiv?.text()?.trim() ?: ""
 
-                // استخراج همه تصاویر
+                // ✅ متن با حفظ خطوط جدید
+                val htmlContent = contentDiv?.html() ?: ""
+                val text = preserveLineBreaks(htmlContent)
+
+                // ✅ استخراج همه تصاویر
                 val imageUrls = contentDiv?.select("img")?.mapNotNull { img ->
                     img.attr("src").takeIf { it.isNotEmpty() && it.startsWith("http") }
                 } ?: emptyList()
 
-                // استخراج فیلم
+                // ✅ استخراج فیلم
                 val videoTag = contentDiv?.select("video")?.first()
                 val videoUrl = videoTag?.attr("src")?.takeIf { it.isNotEmpty() }
 
-                // تاریخ کامل + اعداد انگلیسی
+                // ✅ تاریخ کامل با اعداد انگلیسی
                 val infoText = postElement.select(".postinfo").text()
-                val date = extractDate(infoText)
+                val date = extractFullDate(infoText)
 
                 posts.add(
                     Post(
@@ -66,7 +69,7 @@ class BlogRepository {
                         imageUrls = imageUrls,
                         videoUrl = videoUrl,
                         date = date,
-                        hashtags = emptyList(),  // ← هشتگ نداریم
+                        hashtags = emptyList(),
                         views = "0"
                     )
                 )
@@ -78,15 +81,28 @@ class BlogRepository {
         return posts
     }
 
-    // تاریخ کامل با اعداد انگلیسی
-    private fun extractDate(text: String): String {
+    // ✅ حفظ خطوط جدید (تبدیل <br> و </p> به \n)
+    private fun preserveLineBreaks(html: String): String {
+        var text = html
+            .replace("<br>", "\n")
+            .replace("<br />", "\n")
+            .replace("<br/>", "\n")
+            .replace("</p>", "\n\n")
+            .replace("<p>", "")
+            .replace(Regex("<[^>]*>"), "")
+            .trim()
+        return text
+    }
+
+    // ✅ استخراج تاریخ کامل
+    private fun extractFullDate(text: String): String {
         val pattern = Regex("""نوشته شده در تاريخ (.*?) توسط""")
         val match = pattern.find(text)
-        val datePart = match?.groupValues?.get(1)?.trim() ?: "تاریخ نامشخص"
+        val datePart = match?.groupValues?.get(1)?.trim() ?: return "تاریخ نامشخص"
         return convertPersianNumbersToEnglish(datePart)
     }
 
-    // تبدیل اعداد فارسی به انگلیسی
+    // ✅ تبدیل اعداد فارسی به انگلیسی
     private fun convertPersianNumbersToEnglish(input: String): String {
         val persianDigits = mapOf(
             '۰' to '0', '۱' to '1', '۲' to '2', '۳' to '3', '۴' to '4',
