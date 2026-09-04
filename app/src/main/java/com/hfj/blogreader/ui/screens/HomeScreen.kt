@@ -17,10 +17,12 @@ fun HomeScreen(
     viewModel: MainViewModel,
     navController: NavController
 ) {
+    // دریافت وضعیت‌ها
     val posts by viewModel.filteredPosts.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
 
+    // نمایش ساده
     Scaffold(
         topBar = {
             TopAppBar(
@@ -28,35 +30,30 @@ fun HomeScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            contentAlignment = Alignment.Center
         ) {
             when {
                 isLoading -> {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("جاري التحميل...")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("جاري التحميل...")
+                    }
                 }
                 errorMessage != null -> {
                     Text("❌ $errorMessage", color = MaterialTheme.colorScheme.error)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = { viewModel.fetchAllPosts() }) {
-                        Text("🔄 إعادة المحاولة")
-                    }
                 }
                 posts.isEmpty() -> {
                     Text("📭 لا توجد مشاركات")
                 }
                 else -> {
-                    Text("✅ ${posts.size} مشاركة تم تحميلها!")
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "مثال: ${posts.firstOrNull()?.content?.take(50) ?: "..."}",
-                        fontSize = 14.sp
+                        text = "✅ ${posts.size} مشاركة",
+                        fontSize = 20.sp
                     )
                 }
             }
