@@ -3,20 +3,16 @@ package com.hfj.blogreader
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -25,34 +21,30 @@ import com.hfj.blogreader.ui.screens.HomeScreen
 import com.hfj.blogreader.ui.screens.PostDetailScreen
 import com.hfj.blogreader.ui.screens.SettingsScreen
 import com.hfj.blogreader.ui.theme.HFJBlogReaderTheme
-import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
-            // try-catch فقط دور بخش‌های غیر کامپوز (مثل ایجاد ViewModel)
-            val viewModel: MainViewModel = try {
-                viewModel()
-            } catch (e: Exception) {
-                // اگر ViewModel خطا داد، صفحه خطا را نشان بده
-                ErrorScreen(e.message ?: "خطا در ایجاد ViewModel")
-                return@setContent
-            }
-
-            val fontScale by viewModel.fontScale.collectAsState()
+            val viewModel: MainViewModel = viewModel()
+            val errorMessage by viewModel.errorMessage.collectAsState()
             val navController = rememberNavController()
 
             HFJBlogReaderTheme {
-                CompositionLocalProvider(
-                    LocalFontScale provides fontScale
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
+                    if (errorMessage != null) {
+                        // نمایش پیام خطا
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("❌ $errorMessage")
+                        }
+                    } else {
                         NavHost(
                             navController = navController,
                             startDestination = "home"
@@ -81,28 +73,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun ErrorScreen(message: String) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "❌ خطا در بارگذاری برنامه",
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium
-            )
         }
     }
 }
