@@ -43,10 +43,17 @@ class BlogRepository {
                 val title = link?.text()?.trim() ?: ""
 
                 val contentDiv = postElement.select(".postcontent").first()
-
-                // ✅ متن با حفظ خطوط جدید
                 val htmlContent = contentDiv?.html() ?: ""
-                val text = preserveLineBreaks(htmlContent)
+
+                // ✅ اینترها (فقط <br> و </p> به \n)
+                val text = htmlContent
+                    .replace("<br>", "\n")
+                    .replace("<br />", "\n")
+                    .replace("<br/>", "\n")
+                    .replace("</p>", "\n")
+                    .replace("<p>", "")
+                    .replace(Regex("<[^>]*>"), "")
+                    .trim()
 
                 // ✅ استخراج همه تصاویر
                 val imageUrls = contentDiv?.select("img")?.mapNotNull { img ->
@@ -57,7 +64,7 @@ class BlogRepository {
                 val videoTag = contentDiv?.select("video")?.first()
                 val videoUrl = videoTag?.attr("src")?.takeIf { it.isNotEmpty() }
 
-                // ✅ تاریخ کامل با اعداد انگلیسی
+                // ✅ تاریخ (بدون تبدیل ارقام - همان فرمت HTML)
                 val infoText = postElement.select(".postinfo").text()
                 val date = extractFullDate(infoText)
 
@@ -81,33 +88,17 @@ class BlogRepository {
         return posts
     }
 
-    // ✅ حفظ خطوط جدید (تبدیل <br> و </p> به \n)
-    private fun preserveLineBreaks(html: String): String {
-        var text = html
-            .replace("<br>", "\n")
-            .replace("<br />", "\n")
-            .replace("<br/>", "\n")
-            .replace("</p>", "\n\n")
-            .replace("<p>", "")
-            .replace(Regex("<[^>]*>"), "")
-            .trim()
-        return text
-    }
-
-    // ✅ استخراج تاریخ کامل
+    // ✅ استخراج تاریخ بدون تبدیل ارقام (همان فرمت HTML)
     private fun extractFullDate(text: String): String {
         val pattern = Regex("""نوشته شده در تاريخ (.*?) توسط""")
         val match = pattern.find(text)
-        val datePart = match?.groupValues?.get(1)?.trim() ?: return "تاریخ نامشخص"
-        return convertPersianNumbersToEnglish(datePart)
-    }
-
-    // ✅ تبدیل اعداد فارسی به انگلیسی
-    private fun convertPersianNumbersToEnglish(input: String): String {
-        val persianDigits = mapOf(
-            '۰' to '0', '۱' to '1', '۲' to '2', '۳' to '3', '۴' to '4',
-            '۵' to '5', '۶' to '6', '۷' to '7', '۸' to '8', '۹' to '9'
-        )
-        return input.map { persianDigits[it] ?: it }.joinToString("")
+        val datePart = match?.groupValues?.get(1)?.trim()
+        return if (!datePart.isNullOrEmpty()) {
+            datePart  // ← بدون تبدیل ارقام، همان فارسی
+        } else {
+            // اگر تاریخ پیدا نشد، از خود متن استفاده کن
+            val fallback = text.replace("نوشته شده در تاريخ ", "").replace(" توسط.*$".toRegex(), "").trim()
+            if (fallback.isNotEmpty()) fallback else "تاریخ نامشخص"
+        }
     }
 }
