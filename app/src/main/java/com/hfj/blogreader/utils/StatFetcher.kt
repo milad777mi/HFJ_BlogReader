@@ -3,6 +3,7 @@ package com.hfj.blogreader.utils
 import android.content.Context
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -31,55 +32,19 @@ object StatFetcher {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
-                // ⏳ صبر می‌کنیم تا اسکریپت آمار کامل اجرا شود
+                // ⏳ صبر ۳ ثانیه برای اجرای کامل جاوااسکریپت
                 view?.postDelayed({
 
                     val jsCode = """
                         (function() {
-                            // کل متن صفحه را بگیر
                             var text = document.body.innerText;
+                            // حذف فضاهای اضافی
                             text = text.replace(/\s+/g, ' ');
-
-                            function extractNumber(keyword) {
-                                // جستجوی دقیق با عبارت کلیدی
-                                var regex = new RegExp(keyword + '\\s*[:]?\\s*(\\d+)');
-                                var match = text.match(regex);
-                                return match ? match[1] : '0';
-                            }
-
-                            // ✅ استخراج با کلمات دقیق از کد شما
-                            var today = extractNumber('بازديد امروز');
-                            var yesterday = extractNumber('بازديد دیروز');
-                            var weekly = extractNumber('بازديد هفتگی');
-                            var monthly = extractNumber('بازديد ماهانه');
-                            var total = extractNumber('بازديد كل');
-
-                            // اگر چیزی پیدا نشد، با املای جایگزین امتحان کن
-                            if (today == '0') today = extractNumber('بازدید امروز');
-                            if (yesterday == '0') yesterday = extractNumber('بازدید دیروز');
-                            if (weekly == '0') weekly = extractNumber('بازدید هفتگی');
-                            if (monthly == '0') monthly = extractNumber('بازدید ماهانه');
-                            if (total == '0') total = extractNumber('بازدید كل');
-
-                            // اگر باز هم هیچ‌کدام پیدا نشد، آخرین ۵ عدد صفحه را بگیر
-                            if (today == '0' && yesterday == '0' && weekly == '0' && monthly == '0' && total == '0') {
-                                var allNumbers = text.match(/\d+/g);
-                                if (allNumbers && allNumbers.length >= 5) {
-                                    var len = allNumbers.length;
-                                    today = allNumbers[len - 5] || '0';
-                                    yesterday = allNumbers[len - 4] || '0';
-                                    weekly = allNumbers[len - 3] || '0';
-                                    monthly = allNumbers[len - 2] || '0';
-                                    total = allNumbers[len - 1] || '0';
-                                }
-                            }
-
+                            // ✅ برای دیباگ: کل متن را برمی‌گردانیم
                             return JSON.stringify({
-                                today: today,
-                                yesterday: yesterday,
-                                weekly: weekly,
-                                monthly: monthly,
-                                total: total
+                                fullText: text,
+                                // فقط برای تست
+                                debug: 'OK'
                             });
                         })();
                     """.trimIndent()
@@ -88,12 +53,28 @@ object StatFetcher {
                         val cleanJson = resultJson.trim().trim('"').replace("\\", "")
                         try {
                             val jsonObject = JSONObject(cleanJson)
+                            val fullText = jsonObject.optString("fullText", "")
+
+                            // 🔍 نمایش متن واقعی در Toast برای دیباگ
+                            if (fullText.isNotEmpty()) {
+                                // فقط ۲۰۰ کاراکتر اول را نشان بده
+                                val preview = if (fullText.length > 200) fullText.take(200) + "..." else fullText
+                                Toast.makeText(context, "متن صفحه: $preview", Toast.LENGTH_LONG).show()
+                            }
+
+                            // استخراج اعداد با جستجوی مستقیم در متن
+                            val today = extractNumber(fullText, "بازديد امروز")
+                            val yesterday = extractNumber(fullText, "بازديد دیروز")
+                            val weekly = extractNumber(fullText, "بازديد هفتگی")
+                            val monthly = extractNumber(fullText, "بازديد ماهانه")
+                            val total = extractNumber(fullText, "بازديد كل")
+
                             val stats = BlogStats(
-                                today = jsonObject.optString("today", "0"),
-                                yesterday = jsonObject.optString("yesterday", "0"),
-                                weekly = jsonObject.optString("weekly", "0"),
-                                monthly = jsonObject.optString("monthly", "0"),
-                                total = jsonObject.optString("total", "0")
+                                today = today,
+                                yesterday = yesterday,
+                                weekly = weekly,
+                                monthly = monthly,
+                                total = total
                             )
                             deferred.complete(stats)
                         } catch (e: Exception) {
@@ -101,7 +82,7 @@ object StatFetcher {
                         }
                         view?.destroy()
                     }
-                }, 2000) // ⏳ ۲ ثانیه صبر (چون اسکریپت خارجی است)
+                }, 3000) // ⏳ ۳ ثانیه صبر
             }
 
             override fun onReceivedError(
@@ -117,7 +98,7 @@ object StatFetcher {
         }
 
         try {
-            withTimeout(20000L) { // ⏳ ۲۰ ثانیه تایم‌اوت
+            withTimeout(25000L) {
                 webView.loadUrl("https://hfgapi77777.blogfa.com/")
                 deferred.await()
             }
@@ -128,5 +109,12 @@ object StatFetcher {
             webView.destroy()
             BlogStats()
         }
+    }
+
+    // ✅ استخراج عدد با جستجوی مستقیم
+    private fun extractNumber(text: String, keyword: String): String {
+        val pattern = Regex("""$keyword\s*[:]?\s*(\d+)""")
+        val match = pattern.find(text)
+        return match?.groupValues?.get(1) ?: "0"
     }
 }
