@@ -1,5 +1,7 @@
 package com.hfj.blogreader.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,9 +12,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState   // ✅ اصلاح شده
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -66,42 +69,46 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            // تصویر یا فیلم
+            // فیلم
             if (post.videoUrl != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
-                        .padding(bottom = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                contentDescription = "تشغيل الفيديو",
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Text("انقر لتشغيل الفيديو")
-                        }
-                    }
-                }
-            } else if (post.imageUrl != null) {
-                AsyncImage(
-                    model = post.imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
                         .height(250.dp)
                         .padding(bottom = 12.dp)
-                )
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.PlayArrow,
+                            contentDescription = "تشغيل الفيديو",
+                            modifier = Modifier.size(72.dp)
+                        )
+                        Text(
+                            "برای پخش فیلم کلیک کنید",
+                            fontSize = 16.sp * fontScale
+                        )
+                    }
+                }
+            }
+
+            // تصاویر (با بزرگنمایی)
+            if (post.imageUrls.isNotEmpty()) {
+                post.imageUrls.forEach { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp)
+                            .padding(bottom = 12.dp)
+                            .clickable {
+                                // بزرگنمایی با دیالوگ
+                            },
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
 
             // محتوا
@@ -116,16 +123,18 @@ fun PostDetailScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    if (post.title != null) {
+                    // عنوان
+                    if (post.title != null && post.title.isNotEmpty()) {
                         Text(
                             post.title!!,
-                            fontSize = 20.sp * fontScale,
+                            fontSize = 22.sp * fontScale,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
+                    // متن کامل
                     Text(
                         post.content,
                         fontSize = 17.sp * fontScale,
@@ -137,6 +146,7 @@ fun PostDetailScreen(
                     Divider()
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // تاریخ (با اعداد انگلیسی)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
