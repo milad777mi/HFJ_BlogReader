@@ -32,19 +32,20 @@ object StatFetcher {
                 val jsCode = """
                     (function() {
                         var text = document.body.innerText;
-                        // حذف فضاهای اضافی
                         text = text.replace(/\s+/g, ' ');
-                        function extract(keyword) {
+
+                        function extractNumber(keyword) {
                             var regex = new RegExp(keyword + '\\s*[:]?\\s*(\\d+)');
                             var match = text.match(regex);
                             return match ? match[1] : '0';
                         }
+
                         return JSON.stringify({
-                            today: extract('بازديد امروز'),
-                            yesterday: extract('بازديد دیروز'),
-                            weekly: extract('بازديد هفتگی'),
-                            monthly: extract('بازديد ماهانه'),
-                            total: extract('بازديد كل')
+                            today: extractNumber('بازديد امروز'),
+                            yesterday: extractNumber('بازديد دیروز'),
+                            weekly: extractNumber('بازديد هفتگی'),
+                            monthly: extractNumber('بازديد ماهانه'),
+                            total: extractNumber('بازديد كل')
                         });
                     })();
                 """.trimIndent()
