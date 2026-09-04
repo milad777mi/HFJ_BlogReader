@@ -18,7 +18,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
-import kotlinx.coroutines.flow.collectAsState   // ← import جدید
+import kotlinx.coroutines.flow.collectAsState   // ← این خط را اضافه کنید
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,7 +27,6 @@ fun PostDetailScreen(
     viewModel: MainViewModel,
     navController: NavController
 ) {
-    // تغییر: collectAsStateWithLifecycle() → collectAsState()
     val posts by viewModel.filteredPosts.collectAsState()
     val post = posts.find { it.id == postId }
     val fontScale = LocalFontScale.current
