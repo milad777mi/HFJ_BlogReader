@@ -5,7 +5,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange      // ← اضافه شد
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Visibility    // ← اضافه شد
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,6 +67,7 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
+            // تصویر یا فیلم
             if (post.videoUrl != null) {
                 Box(
                     modifier = Modifier
@@ -102,6 +105,7 @@ fun PostDetailScreen(
                 )
             }
 
+            // محتوا
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -126,7 +130,7 @@ fun PostDetailScreen(
                     Text(
                         post.content,
                         fontSize = 17.sp * fontScale,
-                        lineHeight = 2.0.em * fontScale,
+                        lineHeight = 34.sp,   // ← به جای `em` از `sp` استفاده شد
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
