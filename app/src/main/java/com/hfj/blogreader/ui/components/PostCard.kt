@@ -1,5 +1,6 @@
 package com.hfj.blogreader.ui.components
 
+import androidx.compose.foundation.background          // ← اضافه شد
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,13 +41,14 @@ fun PostCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
+            // نمایش تصویر یا فیلم
             if (post.videoUrl != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(190.dp)
                         .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceVariant),   // ← اصلاح شد
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -67,6 +69,7 @@ fun PostCard(
                 )
             }
 
+            // محتوای کارت
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -75,7 +78,7 @@ fun PostCard(
                 Text(
                     text = post.content,
                     fontSize = 15.sp * fontScale,
-                    lineHeight = 1.6.em * fontScale,
+                    lineHeight = 28.sp,   // ← به جای `em` از `sp` استفاده شد
                     maxLines = 4,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
@@ -118,7 +121,7 @@ fun PostCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            "${post.views}",
+                            post.views,
                             fontSize = 12.sp * fontScale,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
