@@ -16,7 +16,7 @@ import androidx.navigation.NavController
 import com.hfj.blogreader.ui.components.PostCard
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
-import kotlinx.coroutines.flow.collectAsState   // ← این خط را اضافه کنید
+import kotlinx.coroutines.flow.collectAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
