@@ -25,7 +25,6 @@ fun SettingsScreen(
     val fontScale by viewModel.fontScale.collectAsState()
     val stats by viewModel.stats.collectAsState()
 
-    // بارگذاری آمار هنگام باز شدن صفحه
     LaunchedEffect(Unit) {
         viewModel.loadStats(context)
     }
