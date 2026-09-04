@@ -5,11 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState   // ✅ اصلاح شده
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,6 +23,12 @@ fun SettingsScreen(
     context: Context
 ) {
     val fontScale by viewModel.fontScale.collectAsState()
+    val stats by viewModel.stats.collectAsState()
+
+    // بارگذاری آمار هنگام باز شدن صفحه
+    LaunchedEffect(Unit) {
+        viewModel.loadStats(context)
+    }
 
     Scaffold(
         topBar = {
@@ -49,7 +54,38 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // کارت حجم الخط
+            // ---------- کارت آمار ----------
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "📊 إحصائيات المدونة",
+                        fontSize = 16.sp * fontScale,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    StatRow("اليوم", stats.today, fontScale)
+                    StatRow("أمس", stats.yesterday, fontScale)
+                    StatRow("هذا الأسبوع", stats.weekly, fontScale)
+                    StatRow("هذا الشهر", stats.monthly, fontScale)
+                    StatRow("الإجمالي", stats.total, fontScale)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { viewModel.loadStats(context) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🔄 تحديث الإحصائيات")
+                    }
+                }
+            }
+
+            // ---------- کارت حجم الخط ----------
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -138,7 +174,7 @@ fun SettingsScreen(
                 }
             }
 
-            // کارت حول التطبيق
+            // ---------- کارت حول التطبيق ----------
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -162,7 +198,7 @@ fun SettingsScreen(
                 }
             }
 
-            // دکمه بارگذاری مجدد
+            // ---------- دکمه بارگذاری مجدد ----------
             Button(
                 onClick = { viewModel.fetchAllPosts() },
                 modifier = Modifier.fillMaxWidth()
@@ -170,5 +206,16 @@ fun SettingsScreen(
                 Text("🔄 إعادة تحميل المشاركات")
             }
         }
+    }
+}
+
+@Composable
+fun StatRow(label: String, value: String, fontScale: Float) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, fontSize = 14.sp * fontScale)
+        Text(value, fontSize = 14.sp * fontScale, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
     }
 }
