@@ -1,6 +1,7 @@
 package com.hfj.blogreader.viewmodel
 
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hfj.blogreader.data.models.Post
@@ -62,7 +63,18 @@ class MainViewModel(
             try {
                 val posts = blogRepo.fetchAllPosts()
                 _allPosts.value = posts
+                if (posts.isEmpty()) {
+                    Toast.makeText(context, "⚠️ هیچ پستی یافت نشد", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "✅ ${posts.size} پست بارگذاری شد", Toast.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
+                _allPosts.value = emptyList()
+                Toast.makeText(
+                    context,
+                    "❌ خطا در دریافت مطالب: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
                 e.printStackTrace()
             }
             _isLoading.value = false
@@ -70,6 +82,15 @@ class MainViewModel(
     }
 
     init {
-        fetchAllPosts()
+        try {
+            fetchAllPosts()
+        } catch (e: Exception) {
+            Toast.makeText(
+                context,
+                "❌ خطا در شروع برنامه: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
+            e.printStackTrace()
+        }
     }
 }
