@@ -13,9 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
+import kotlinx.coroutines.flow.collectAsState   // ← import جدید
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,7 +23,8 @@ fun SettingsScreen(
     viewModel: MainViewModel,
     context: Context
 ) {
-    val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
+    // تغییر: collectAsStateWithLifecycle() → collectAsState()
+    val fontScale by viewModel.fontScale.collectAsState()
 
     Scaffold(
         topBar = {
