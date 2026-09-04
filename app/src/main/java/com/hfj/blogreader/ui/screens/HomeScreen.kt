@@ -16,7 +16,7 @@ import androidx.navigation.NavController
 import com.hfj.blogreader.ui.components.PostCard
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
-import kotlinx.coroutines.flow.collectAsState   // ← تغییر: import جدید
+import kotlinx.coroutines.flow.collectAsState   // ← این خط را اضافه کنید
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,7 +24,6 @@ fun HomeScreen(
     viewModel: MainViewModel,
     navController: NavController
 ) {
-    // تغییر: collectAsStateWithLifecycle() → collectAsState()
     val posts by viewModel.filteredPosts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
