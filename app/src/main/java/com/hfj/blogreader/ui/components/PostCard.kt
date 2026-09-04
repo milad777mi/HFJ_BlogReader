@@ -46,7 +46,7 @@ fun PostCard(
         ) {
             // ✅ نمایش تصویر/فیلم در کارت
             when {
-                // 1. اگر هم عکس و هم فیلم دارد → عکس را به‌عنوان پیش‌نمایش فیلم نشان بده
+                // 1. هم عکس و هم فیلم دارد → عکس به‌عنوان پیش‌نمایش فیلم
                 post.imageUrls.isNotEmpty() && post.videoUrl != null -> {
                     val imageUrl = post.imageUrls.first()
                     Box(
@@ -79,7 +79,7 @@ fun PostCard(
                         }
                     }
                 }
-                // 2. فقط فیلم دارد (بدون عکس) → آیکون پلی بزرگ
+                // 2. فقط فیلم دارد → آیکون پلی
                 post.videoUrl != null -> {
                     Box(
                         modifier = Modifier
@@ -105,7 +105,7 @@ fun PostCard(
                         }
                     }
                 }
-                // 3. فقط عکس دارد (بدون فیلم) → عکس کامل
+                // 3. فقط عکس دارد → عکس کامل
                 post.imageUrls.isNotEmpty() -> {
                     if (post.imageUrls.size == 1) {
                         AsyncImage(
@@ -139,10 +139,8 @@ fun PostCard(
                         }
                     }
                 }
-                // 4. هیچ عکس و فیلمی ندارد → هیچ چیز نمایش داده نشود
-                else -> {
-                    // خالی
-                }
+                // 4. هیچ عکس و فیلمی ندارد
+                else -> { /* خالی */ }
             }
 
             // محتوای کارت
@@ -151,7 +149,7 @@ fun PostCard(
                     .fillMaxWidth()
                     .padding(14.dp)
             ) {
-                // عنوان جدا با فونت بزرگتر
+                // عنوان جدا
                 if (post.title != null && post.title.isNotEmpty()) {
                     Text(
                         text = post.title,
@@ -176,7 +174,7 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // تاریخ
+                // تاریخ (بدون بازدید)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
