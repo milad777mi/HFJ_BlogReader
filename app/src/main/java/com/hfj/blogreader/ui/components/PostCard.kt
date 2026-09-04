@@ -1,6 +1,5 @@
 package com.hfj.blogreader.ui.components
 
-import androidx.compose.foundation.background          // ← اضافه شد
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +22,6 @@ import com.hfj.blogreader.ui.theme.LocalFontScale
 @Composable
 fun PostCard(
     post: Post,
-    onHashtagTap: (String) -> Unit,
     onCardClick: () -> Unit
 ) {
     val fontScale = LocalFontScale.current
@@ -41,14 +39,14 @@ fun PostCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // نمایش تصویر یا فیلم
+            // تصویر یا فیلم
             if (post.videoUrl != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(190.dp)
                         .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),   // ← اصلاح شد
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -78,21 +76,13 @@ fun PostCard(
                 Text(
                     text = post.content,
                     fontSize = 15.sp * fontScale,
-                    lineHeight = 28.sp,   // ← به جای `em` از `sp` استفاده شد
+                    lineHeight = 28.sp,
                     maxLines = 4,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                if (post.hashtags.isNotEmpty()) {
-                    HashtagChips(
-                        hashtags = post.hashtags.take(5),
-                        onTagTap = onHashtagTap
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
