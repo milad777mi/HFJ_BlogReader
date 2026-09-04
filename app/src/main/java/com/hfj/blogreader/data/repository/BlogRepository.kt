@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import java.net.SocketTimeoutException
 
 class BlogRepository {
 
@@ -14,11 +15,18 @@ class BlogRepository {
         val allPosts = mutableListOf<Post>()
         var currentUrl = baseUrl
 
-        while (currentUrl.isNotEmpty()) {
-            val result = fetchPage(currentUrl)
-            allPosts.addAll(result.posts)
-            currentUrl = result.nextPageUrl ?: ""
-            delay(500)
+        try {
+            while (currentUrl.isNotEmpty()) {
+                val result = fetchPage(currentUrl)
+                allPosts.addAll(result.posts)
+                currentUrl = result.nextPageUrl ?: ""
+                delay(500)
+            }
+        } catch (e: SocketTimeoutException) {
+            // خطای تایم‌اوت
+            throw Exception("⏱️ زمان اتصال به سرور به پایان رسید")
+        } catch (e: Exception) {
+            throw Exception("❌ خطا در دریافت داده: ${e.message}")
         }
 
         allPosts
@@ -26,14 +34,17 @@ class BlogRepository {
 
     private suspend fun fetchPage(url: String): PageResult = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.connect(url).get()
+            val doc = Jsoup.connect(url)
+                .timeout(15000) // ۱۵ ثانیه تایم‌اوت
+                .get()
             val posts = extractPosts(doc)
             val nextPageUrl = extractNextPageUrl(doc, url)
 
             PageResult(posts, nextPageUrl)
+        } catch (e: SocketTimeoutException) {
+            throw Exception("⏱️ زمان اتصال به سرور به پایان رسید")
         } catch (e: Exception) {
-            e.printStackTrace()
-            PageResult(emptyList(), null)
+            throw Exception("❌ خطا در دریافت صفحه: ${e.message}")
         }
     }
 
@@ -78,6 +89,7 @@ class BlogRepository {
                     )
                 )
             } catch (e: Exception) {
+                // اگر یک پست خطا داد، از آن عبور می‌کنیم
                 e.printStackTrace()
             }
         }
