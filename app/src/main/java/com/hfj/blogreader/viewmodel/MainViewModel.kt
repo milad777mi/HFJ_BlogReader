@@ -18,14 +18,12 @@ class MainViewModel(
     private val blogRepo = BlogRepository()
     private val fontManager = FontSizeManager(getApplication())
 
-    // ---------- Font Size ----------
     val fontScale: StateFlow<Float> = fontManager.fontScale
 
     fun setFontScale(scale: Float) {
         fontManager.setFontScale(scale)
     }
 
-    // ---------- Posts ----------
     private val _allPosts = MutableStateFlow<List<Post>>(emptyList())
     val allPosts: StateFlow<List<Post>> = _allPosts
 
@@ -35,14 +33,10 @@ class MainViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
-    // بدون هشتگ: فقط همه پست‌ها را نمایش بده
     val filteredPosts: StateFlow<List<Post>> = _allPosts
 
-    // ---------- Stats ----------
     private val _stats = MutableStateFlow(BlogStats())
     val stats: StateFlow<BlogStats> = _stats
-
-    // ---------- Functions ----------
 
     fun fetchAllPosts() {
         viewModelScope.launch {
