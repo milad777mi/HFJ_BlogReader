@@ -16,25 +16,21 @@ class MainViewModel(
     private val blogRepo = BlogRepository()
     private val fontManager = FontSizeManager(context)
 
-    // ---------- Font Size ----------
     val fontScale: StateFlow<Float> = fontManager.fontScale
 
     fun setFontScale(scale: Float) {
         fontManager.setFontScale(scale)
     }
 
-    // ---------- Posts ----------
     private val _allPosts = MutableStateFlow<List<Post>>(emptyList())
     val allPosts: StateFlow<List<Post>> = _allPosts
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    // ---------- Error Message ----------
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
-    // ---------- Tabs ----------
     private val _selectedTab = MutableStateFlow("الكل")
     val selectedTab: StateFlow<String> = _selectedTab
 
@@ -59,8 +55,6 @@ class MainViewModel(
         initialValue = emptyList()
     )
 
-    // ---------- Functions ----------
-
     fun selectTab(tab: String) {
         _selectedTab.value = tab
     }
@@ -76,7 +70,7 @@ class MainViewModel(
                     _errorMessage.value = "⚠️ هیچ پستی یافت نشد"
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "❌ خطا در دریافت مطالب: ${e.message}"
+                _errorMessage.value = "❌ خطا: ${e.message}"
                 _allPosts.value = emptyList()
                 e.printStackTrace()
             }
@@ -85,11 +79,6 @@ class MainViewModel(
     }
 
     init {
-        try {
-            fetchAllPosts()
-        } catch (e: Exception) {
-            _errorMessage.value = "❌ خطا در شروع برنامه: ${e.message}"
-            e.printStackTrace()
-        }
+        fetchAllPosts()
     }
 }
