@@ -5,9 +5,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange      // ← اضافه شد
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Visibility    // ← اضافه شد
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.hfj.blogreader.ui.components.HashtagChips
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 
@@ -130,23 +129,11 @@ fun PostDetailScreen(
                     Text(
                         post.content,
                         fontSize = 17.sp * fontScale,
-                        lineHeight = 34.sp,   // ← به جای `em` از `sp` استفاده شد
+                        lineHeight = 34.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
-
-                    if (post.hashtags.isNotEmpty()) {
-                        HashtagChips(
-                            hashtags = post.hashtags,
-                            onTagTap = { tag ->
-                                navController.popBackStack()
-                                viewModel.selectTab(tag)
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
                     Divider()
                     Spacer(modifier = Modifier.height(12.dp))
 
