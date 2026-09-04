@@ -46,6 +46,7 @@ fun PostDetailScreen(
 
     var showZoomDialog by remember { mutableStateOf(false) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
+    var showFullscreenVideo by remember { mutableStateOf(false) }
 
     if (post == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -82,9 +83,8 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            // ========== فیلم با ExoPlayer (اصلاح‌شده) ==========
+            // ========== فیلم با ExoPlayer ==========
             if (post.videoUrl != null) {
-                // ✅ استفاده از remember برای نگهداری ExoPlayer
                 val exoPlayer = remember {
                     ExoPlayer.Builder(context).build().apply {
                         setMediaItem(MediaItem.fromUri(Uri.parse(post.videoUrl)))
@@ -93,7 +93,6 @@ fun PostDetailScreen(
                     }
                 }
 
-                // ✅ آزادسازی هنگام خروج
                 DisposableEffect(Unit) {
                     onDispose {
                         exoPlayer.release()
@@ -110,6 +109,10 @@ fun PostDetailScreen(
                                 ViewGroup.LayoutParams.WRAP_CONTENT
                             )
                             minimumHeight = 250.dp.value.toInt()
+                            // ✅ کلیک برای بزرگنمایی فیلم
+                            setOnClickListener {
+                                showFullscreenVideo = true
+                            }
                         }
                     },
                     modifier = Modifier
@@ -173,7 +176,7 @@ fun PostDetailScreen(
                     Divider()
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // تاریخ
+                    // ✅ تاریخ بدون "نوشته شده در"
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -185,7 +188,7 @@ fun PostDetailScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            "نوشته شده در ${post.date}",
+                            post.date,
                             fontSize = 13.sp * fontScale,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -195,7 +198,7 @@ fun PostDetailScreen(
         }
     }
 
-    // ========== دیالوگ بزرگنمایی عکس ==========
+    // ========== دیالوگ بزرگنمایی تصویر ==========
     if (showZoomDialog && zoomImageUrl != null) {
         Dialog(
             onDismissRequest = { showZoomDialog = false },
@@ -214,6 +217,52 @@ fun PostDetailScreen(
                         .fillMaxSize()
                         .padding(16.dp),
                     contentScale = ContentScale.Fit
+                )
+            }
+        }
+    }
+
+    // ========== دیالوگ بزرگنمایی فیلم (تمام‌صفحه) ==========
+    if (showFullscreenVideo) {
+        val fullscreenPlayer = remember {
+            ExoPlayer.Builder(context).build().apply {
+                setMediaItem(MediaItem.fromUri(Uri.parse(post.videoUrl)))
+                prepare()
+                playWhenReady = true
+            }
+        }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                fullscreenPlayer.release()
+            }
+        }
+
+        Dialog(
+            onDismissRequest = {
+                showFullscreenVideo = false
+                fullscreenPlayer.release()
+            },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { showFullscreenVideo = false }
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            player = fullscreenPlayer
+                            useController = true
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
