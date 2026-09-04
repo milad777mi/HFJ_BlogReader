@@ -1,15 +1,20 @@
 package com.hfj.blogreader.utils
 
 import android.content.Context
+import android.os.Environment
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
+import java.io.File
+import java.io.FileWriter
+import java.io.PrintWriter
+import java.text.SimpleDateFormat
+import java.util.*
 
 data class BlogStats(
     val today: String = "0",
@@ -38,13 +43,9 @@ object StatFetcher {
                     val jsCode = """
                         (function() {
                             var text = document.body.innerText;
-                            // حذف فضاهای اضافی
                             text = text.replace(/\s+/g, ' ');
-                            // ✅ برای دیباگ: کل متن را برمی‌گردانیم
                             return JSON.stringify({
-                                fullText: text,
-                                // فقط برای تست
-                                debug: 'OK'
+                                fullText: text
                             });
                         })();
                     """.trimIndent()
@@ -55,14 +56,10 @@ object StatFetcher {
                             val jsonObject = JSONObject(cleanJson)
                             val fullText = jsonObject.optString("fullText", "")
 
-                            // 🔍 نمایش متن واقعی در Toast برای دیباگ
-                            if (fullText.isNotEmpty()) {
-                                // فقط ۲۰۰ کاراکتر اول را نشان بده
-                                val preview = if (fullText.length > 200) fullText.take(200) + "..." else fullText
-                                Toast.makeText(context, "متن صفحه: $preview", Toast.LENGTH_LONG).show()
-                            }
+                            // ✅ ذخیره متن کامل در پوشه Downloads برای دیباگ
+                            saveDebugText(fullText)
 
-                            // استخراج اعداد با جستجوی مستقیم در متن
+                            // استخراج اعداد
                             val today = extractNumber(fullText, "بازديد امروز")
                             val yesterday = extractNumber(fullText, "بازديد دیروز")
                             val weekly = extractNumber(fullText, "بازديد هفتگی")
@@ -78,6 +75,7 @@ object StatFetcher {
                             )
                             deferred.complete(stats)
                         } catch (e: Exception) {
+                            saveDebugText("❌ خطا در پردازش JSON: ${e.message}")
                             deferred.complete(BlogStats())
                         }
                         view?.destroy()
@@ -92,6 +90,7 @@ object StatFetcher {
                 failingUrl: String?
             ) {
                 super.onReceivedError(view, errorCode, description, failingUrl)
+                saveDebugText("❌ خطا در بارگذاری صفحه: $errorCode - $description")
                 deferred.complete(BlogStats())
                 view?.destroy()
             }
@@ -103,18 +102,45 @@ object StatFetcher {
                 deferred.await()
             }
         } catch (e: TimeoutCancellationException) {
+            saveDebugText("❌ تایم‌اوت ۲۵ ثانیه‌ای")
             webView.destroy()
             BlogStats()
         } catch (e: Exception) {
+            saveDebugText("❌ خطای کلی: ${e.message}")
             webView.destroy()
             BlogStats()
         }
     }
 
-    // ✅ استخراج عدد با جستجوی مستقیم
     private fun extractNumber(text: String, keyword: String): String {
         val pattern = Regex("""$keyword\s*[:]?\s*(\d+)""")
         val match = pattern.find(text)
         return match?.groupValues?.get(1) ?: "0"
+    }
+
+    // ✅ ذخیره‌سازی در پوشه Downloads
+    private fun saveDebugText(text: String) {
+        try {
+            val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!directory.exists()) {
+                directory.mkdirs()
+            }
+            val file = File(directory, "debug_stats.txt")
+            val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+            val fullText = """
+                =======================================
+                زمان: $time
+                =======================================
+                $text
+                =======================================
+            """.trimIndent()
+            FileWriter(file, false).use { writer ->
+                PrintWriter(writer).use { printWriter ->
+                    printWriter.println(fullText)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }
