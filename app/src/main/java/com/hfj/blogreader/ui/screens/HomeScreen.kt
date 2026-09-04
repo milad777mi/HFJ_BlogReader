@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState   // ✅ اصلاح شده
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -16,7 +17,6 @@ import androidx.navigation.NavController
 import com.hfj.blogreader.ui.components.PostCard
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
-import kotlinx.coroutines.flow.collectAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
