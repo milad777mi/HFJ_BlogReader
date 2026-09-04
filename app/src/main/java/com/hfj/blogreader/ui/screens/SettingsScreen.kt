@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Add          // ← اضافه شد
+import androidx.compose.material.icons.filled.Remove       // ← اضافه شد
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,6 +49,7 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // کارت حجم الخط
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -98,7 +99,7 @@ fun SettingsScreen(
                                 viewModel.setFontScale(newValue)
                             }
                         ) {
-                            Icon(Icons.Remove, contentDescription = "تصغير")
+                            Icon(Icons.Default.Remove, contentDescription = "تصغير")   // ← اصلاح شد
                         }
 
                         Text(
@@ -113,7 +114,7 @@ fun SettingsScreen(
                                 viewModel.setFontScale(newValue)
                             }
                         ) {
-                            Icon(Icons.Add, contentDescription = "تكبير")
+                            Icon(Icons.Default.Add, contentDescription = "تكبير")      // ← اصلاح شد
                         }
                     }
 
@@ -137,6 +138,7 @@ fun SettingsScreen(
                 }
             }
 
+            // کارت حول التطبيق
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -160,6 +162,7 @@ fun SettingsScreen(
                 }
             }
 
+            // دکمه بارگذاری مجدد
             Button(
                 onClick = { viewModel.fetchAllPosts() },
                 modifier = Modifier.fillMaxWidth()
