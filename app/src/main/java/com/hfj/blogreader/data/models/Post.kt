@@ -4,9 +4,9 @@ data class Post(
     val id: String,
     val title: String? = null,
     val content: String,
-    val imageUrls: List<String> = emptyList(),
+    val imageUrls: List<String> = emptyList(),  // چند عکس
     val videoUrl: String? = null,
     val date: String,
-    val hashtags: List<String> = emptyList(),  // ← خالی (هشتگ نداریم)
+    val hashtags: List<String> = emptyList(),   // هشتگ نداریم
     val views: String = "0"
 )
