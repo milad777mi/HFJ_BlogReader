@@ -31,33 +31,8 @@ class MainViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
-    private val _selectedTab = MutableStateFlow("الكل")
-    val selectedTab: StateFlow<String> = _selectedTab
-
-    val hashtagTabs: StateFlow<List<String>> = _allPosts.map { posts ->
-        val tags = posts.flatMap { it.hashtags }.distinct().sorted()
-        listOf("الكل") + tags
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(),
-        initialValue = listOf("الكل")
-    )
-
-    val filteredPosts: StateFlow<List<Post>> = combine(
-        _allPosts,
-        _selectedTab
-    ) { posts, tab ->
-        if (tab == "الكل") posts
-        else posts.filter { it.hashtags.any { tag -> tag == tab } }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(),
-        initialValue = emptyList()
-    )
-
-    fun selectTab(tab: String) {
-        _selectedTab.value = tab
-    }
+    // بدون هشتگ: فقط همه پست‌ها را نمایش بده
+    val filteredPosts: StateFlow<List<Post>> = _allPosts
 
     fun fetchAllPosts() {
         viewModelScope.launch {
