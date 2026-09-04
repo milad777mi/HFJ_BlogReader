@@ -1,6 +1,11 @@
 package com.hfj.blogreader.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -9,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.hfj.blogreader.ui.components.PostCard
+import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -17,44 +24,96 @@ fun HomeScreen(
     viewModel: MainViewModel,
     navController: NavController
 ) {
-    // دریافت وضعیت‌ها
     val posts by viewModel.filteredPosts.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val fontScale = LocalFontScale.current
 
-    // نمایش ساده
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("📚 قارئ المدونة") }
+                title = {
+                    Text(
+                        "📚 قارئ المدونة",
+                        fontSize = 22.sp * fontScale,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.fetchAllPosts() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "تحديث")
+                    }
+                    IconButton(onClick = { navController.navigate("settings") }) {
+                        Icon(Icons.Default.Settings, contentDescription = "الإعدادات")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
+                .padding(paddingValues)
         ) {
             when {
                 isLoading -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("جاري التحميل...")
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("جاري التحميل...")
+                        }
                     }
                 }
                 errorMessage != null -> {
-                    Text("❌ $errorMessage", color = MaterialTheme.colorScheme.error)
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "❌ $errorMessage",
+                                fontSize = 16.sp * fontScale,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { viewModel.fetchAllPosts() }) {
+                                Text("🔄 إعادة المحاولة")
+                            }
+                        }
+                    }
                 }
                 posts.isEmpty() -> {
-                    Text("📭 لا توجد مشاركات")
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "لا توجد مشاركات",
+                            fontSize = 16.sp * fontScale,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
                 else -> {
-                    Text(
-                        text = "✅ ${posts.size} مشاركة",
-                        fontSize = 20.sp
-                    )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        items(posts) { post ->
+                            PostCard(
+                                post = post,
+                                onCardClick = { navController.navigate("post/${post.id}") }
+                            )
+                        }
+                    }
                 }
             }
         }
