@@ -80,19 +80,20 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.0")
 
-    // Coroutines (برای collectAsState)
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
-    // Jsoup (برای استخراج HTML وبلاگ)
+    // Jsoup (استخراج HTML)
     implementation("org.jsoup:jsoup:1.17.2")
 
-    // Coil (برای نمایش تصاویر)
+    // Coil (نمایش تصاویر)
     implementation("io.coil-kt:coil-compose:2.6.0")
 
-    // ExoPlayer (برای نمایش فیلم)
+    // ✅ ExoPlayer (پخش فیلم)
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.3.1")
 
     // SharedPreferences
     implementation("androidx.preference:preference-ktx:1.2.1")
