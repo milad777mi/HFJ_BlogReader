@@ -1,7 +1,7 @@
 package com.hfj.blogreader.viewmodel
 
-import android.content.Context
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hfj.blogreader.data.models.Post
 import com.hfj.blogreader.data.repository.BlogRepository
@@ -10,11 +10,11 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class MainViewModel(
-    private val context: Context
-) : ViewModel() {
+    application: Application  // ← تغییر: Context → Application
+) : AndroidViewModel(application) {
 
     private val blogRepo = BlogRepository()
-    private val fontManager = FontSizeManager(context)
+    private val fontManager = FontSizeManager(getApplication())
 
     val fontScale: StateFlow<Float> = fontManager.fontScale
 
