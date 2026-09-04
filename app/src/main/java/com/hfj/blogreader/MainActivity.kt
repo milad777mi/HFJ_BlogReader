@@ -1,6 +1,7 @@
 package com.hfj.blogreader
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,47 +26,56 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContent {
-            val viewModel: MainViewModel = viewModel()
-            val fontScale by viewModel.fontScale.collectAsState()
-            val navController = rememberNavController()
+        try {
+            setContent {
+                val viewModel: MainViewModel = viewModel()
+                val fontScale by viewModel.fontScale.collectAsState()
+                val navController = rememberNavController()
 
-            HFJBlogReaderTheme {
-                CompositionLocalProvider(
-                    LocalFontScale provides fontScale
-                ) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
+                HFJBlogReaderTheme {
+                    CompositionLocalProvider(
+                        LocalFontScale provides fontScale
                     ) {
-                        NavHost(
-                            navController = navController,
-                            startDestination = "home"
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.background
                         ) {
-                            composable("home") {
-                                HomeScreen(
-                                    viewModel = viewModel,
-                                    navController = navController
-                                )
-                            }
-                            composable("post/{postId}") { backStackEntry ->
-                                val id = backStackEntry.arguments?.getString("postId") ?: ""
-                                PostDetailScreen(
-                                    postId = id,
-                                    viewModel = viewModel,
-                                    navController = navController
-                                )
-                            }
-                            composable("settings") {
-                                SettingsScreen(
-                                    viewModel = viewModel,
-                                    context = this@MainActivity
-                                )
+                            NavHost(
+                                navController = navController,
+                                startDestination = "home"
+                            ) {
+                                composable("home") {
+                                    HomeScreen(
+                                        viewModel = viewModel,
+                                        navController = navController
+                                    )
+                                }
+                                composable("post/{postId}") { backStackEntry ->
+                                    val id = backStackEntry.arguments?.getString("postId") ?: ""
+                                    PostDetailScreen(
+                                        postId = id,
+                                        viewModel = viewModel,
+                                        navController = navController
+                                    )
+                                }
+                                composable("settings") {
+                                    SettingsScreen(
+                                        viewModel = viewModel,
+                                        context = this@MainActivity
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                "❌ خطا در بارگذاری برنامه: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
+            e.printStackTrace()
         }
     }
 }
