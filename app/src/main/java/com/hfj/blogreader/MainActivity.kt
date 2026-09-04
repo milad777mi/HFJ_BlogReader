@@ -33,51 +33,53 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            try {
-                // بخش‌های غیرکامپوز (مثل ایجاد ViewModel)
-                val viewModel: MainViewModel = viewModel()
-                val fontScale by viewModel.fontScale.collectAsState()
-                val navController = rememberNavController()
+            // try-catch فقط دور بخش‌های غیر کامپوز (مثل ایجاد ViewModel)
+            val viewModel: MainViewModel = try {
+                viewModel()
+            } catch (e: Exception) {
+                // اگر ViewModel خطا داد، صفحه خطا را نشان بده
+                ErrorScreen(e.message ?: "خطا در ایجاد ViewModel")
+                return@setContent
+            }
 
-                HFJBlogReaderTheme {
-                    CompositionLocalProvider(
-                        LocalFontScale provides fontScale
+            val fontScale by viewModel.fontScale.collectAsState()
+            val navController = rememberNavController()
+
+            HFJBlogReaderTheme {
+                CompositionLocalProvider(
+                    LocalFontScale provides fontScale
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
                     ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.background
+                        NavHost(
+                            navController = navController,
+                            startDestination = "home"
                         ) {
-                            NavHost(
-                                navController = navController,
-                                startDestination = "home"
-                            ) {
-                                composable("home") {
-                                    HomeScreen(
-                                        viewModel = viewModel,
-                                        navController = navController
-                                    )
-                                }
-                                composable("post/{postId}") { backStackEntry ->
-                                    val id = backStackEntry.arguments?.getString("postId") ?: ""
-                                    PostDetailScreen(
-                                        postId = id,
-                                        viewModel = viewModel,
-                                        navController = navController
-                                    )
-                                }
-                                composable("settings") {
-                                    SettingsScreen(
-                                        viewModel = viewModel,
-                                        context = this@MainActivity
-                                    )
-                                }
+                            composable("home") {
+                                HomeScreen(
+                                    viewModel = viewModel,
+                                    navController = navController
+                                )
+                            }
+                            composable("post/{postId}") { backStackEntry ->
+                                val id = backStackEntry.arguments?.getString("postId") ?: ""
+                                PostDetailScreen(
+                                    postId = id,
+                                    viewModel = viewModel,
+                                    navController = navController
+                                )
+                            }
+                            composable("settings") {
+                                SettingsScreen(
+                                    viewModel = viewModel,
+                                    context = this@MainActivity
+                                )
                             }
                         }
                     }
                 }
-            } catch (e: Exception) {
-                // در صورت بروز خطا در زمان اجرا، صفحه خطا را نمایش بده
-                ErrorScreen(e.message ?: "خطای ناشناخته")
             }
         }
     }
