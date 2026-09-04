@@ -27,7 +27,7 @@ import com.hfj.blogreader.ui.theme.LocalFontScale
 fun PostCard(
     post: Post,
     onCardClick: () -> Unit,
-    onImageClick: (String) -> Unit = {}
+    onImageClick: (String) -> Unit = {}  // این پارامتر نگه داشته شده اما استفاده نمی‌شود
 ) {
     val fontScale = LocalFontScale.current
 
@@ -54,13 +54,12 @@ fun PostCard(
                             .fillMaxWidth()
                             .height(190.dp)
                             .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+                            .clickable { onCardClick() }  // ✅ فقط باز شدن مطلب
                     ) {
                         AsyncImage(
                             model = imageUrl,
                             contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable { onImageClick(imageUrl) },
+                            modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
                         // آیکون پلی روی عکس
@@ -108,14 +107,15 @@ fun PostCard(
                 // 3. فقط عکس دارد → عکس کامل
                 post.imageUrls.isNotEmpty() -> {
                     if (post.imageUrls.size == 1) {
+                        val imageUrl = post.imageUrls.first()
                         AsyncImage(
-                            model = post.imageUrls.first(),
+                            model = imageUrl,
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(190.dp)
                                 .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                                .clickable { onImageClick(post.imageUrls.first()) },
+                                .clickable { onCardClick() },  // ✅ فقط باز شدن مطلب
                             contentScale = ContentScale.Crop
                         )
                     } else {
@@ -132,7 +132,7 @@ fun PostCard(
                                     modifier = Modifier
                                         .width(200.dp)
                                         .fillMaxHeight()
-                                        .clickable { onImageClick(url) },
+                                        .clickable { onCardClick() },  // ✅ فقط باز شدن مطلب
                                     contentScale = ContentScale.Crop
                                 )
                             }
@@ -174,7 +174,7 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ========== تاریخ (بدون عبارت اضافی) ==========
+                // تاریخ
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -186,7 +186,7 @@ fun PostCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        post.date,  // ← فقط تاریخ، بدون "نوشته شده در"
+                        post.date,
                         fontSize = 12.sp * fontScale,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
