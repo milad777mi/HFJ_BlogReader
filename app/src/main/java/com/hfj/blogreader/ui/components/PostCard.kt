@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,64 +44,104 @@ fun PostCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // فیلم
-            if (post.videoUrl != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(190.dp)
-                        .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { onCardClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.PlayArrow,
-                            contentDescription = "فيديو",
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "فیلم",
-                            fontSize = 14.sp * fontScale,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-            // چند عکس
-            else if (post.imageUrls.isNotEmpty()) {
-                if (post.imageUrls.size == 1) {
-                    AsyncImage(
-                        model = post.imageUrls.first(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(190.dp)
-                            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                            .clickable { onImageClick(post.imageUrls.first()) },
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    LazyRow(
+            // ✅ نمایش تصویر/فیلم در کارت
+            when {
+                // 1. اگر هم عکس و هم فیلم دارد → عکس را به‌عنوان پیش‌نمایش فیلم نشان بده
+                post.imageUrls.isNotEmpty() && post.videoUrl != null -> {
+                    val imageUrl = post.imageUrls.first()
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(190.dp)
                             .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
                     ) {
-                        items(post.imageUrls) { url ->
-                            AsyncImage(
-                                model = url,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .width(200.dp)
-                                    .fillMaxHeight()
-                                    .clickable { onImageClick(url) },
-                                contentScale = ContentScale.Crop
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable { onImageClick(imageUrl) },
+                            contentScale = ContentScale.Crop
+                        )
+                        // آیکون پلی روی عکس
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.PlayArrow,
+                                contentDescription = "فيلم",
+                                modifier = Modifier.size(56.dp),
+                                tint = Color.White.copy(alpha = 0.9f)
                             )
                         }
                     }
+                }
+                // 2. فقط فیلم دارد (بدون عکس) → آیکون پلی بزرگ
+                post.videoUrl != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(190.dp)
+                            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { onCardClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.PlayArrow,
+                                contentDescription = "فيديو",
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                "فيلم",
+                                fontSize = 14.sp * fontScale,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+                // 3. فقط عکس دارد (بدون فیلم) → عکس کامل
+                post.imageUrls.isNotEmpty() -> {
+                    if (post.imageUrls.size == 1) {
+                        AsyncImage(
+                            model = post.imageUrls.first(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(190.dp)
+                                .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+                                .clickable { onImageClick(post.imageUrls.first()) },
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(190.dp)
+                                .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+                        ) {
+                            items(post.imageUrls) { url ->
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .width(200.dp)
+                                        .fillMaxHeight()
+                                        .clickable { onImageClick(url) },
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                        }
+                    }
+                }
+                // 4. هیچ عکس و فیلمی ندارد → هیچ چیز نمایش داده نشود
+                else -> {
+                    // خالی
                 }
             }
 
@@ -135,7 +176,7 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // تاریخ (بدون بازدید و بدون هشتگ)
+                // تاریخ
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
