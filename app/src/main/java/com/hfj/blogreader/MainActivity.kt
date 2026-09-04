@@ -1,8 +1,14 @@
 package com.hfj.blogreader
 
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
+import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -19,12 +25,30 @@ import com.hfj.blogreader.ui.screens.PostDetailScreen
 import com.hfj.blogreader.ui.screens.SettingsScreen
 import com.hfj.blogreader.ui.theme.HFJBlogReaderTheme
 import com.hfj.blogreader.ui.theme.LocalFontScale
+import com.hfj.blogreader.utils.CrashHandler
 import com.hfj.blogreader.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var crashHandler: CrashHandler
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        crashHandler = CrashHandler(this)
+
+        // بررسی دسترسی به حافظه در اندروید 11+
+        checkStoragePermission()
+
+        // بررسی وجود لاگ کرش
+        val crashLog = crashHandler.getCrashLog()
+        if (crashLog != null) {
+            showCrashLogDialog(crashLog)
+            crashHandler.clearCrashLog()
+            return
+        }
+
+        // اجرای عادی برنامه
         setContent {
             val viewModel: MainViewModel = viewModel()
             val fontScale by viewModel.fontScale.collectAsState()
@@ -67,5 +91,50 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun checkStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                try {
+                    val intent = android.content.Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    intent.addCategory(android.content.Intent.CATEGORY_DEFAULT)
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this, "لطفاً دسترسی به حافظه را فعال کنید", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showCrashLogDialog(log: String) {
+        val textView = TextView(this).apply {
+            text = log
+            setTextIsSelectable(true)
+            textSize = 12f
+            setPadding(32, 32, 32, 32)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("📄 گزارش خطا (کرش)")
+            .setView(textView)
+            .setPositiveButton("📤 اشتراک‌گذاری") { _, _ ->
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(android.content.Intent.EXTRA_TEXT, log)
+                }
+                startActivity(android.content.Intent.createChooser(intent, "ارسال لاگ"))
+            }
+            .setNegativeButton("❌ بستن") { _, _ ->
+                finish()
+            }
+            .setNeutralButton("🔄 اجرای مجدد") { _, _ ->
+                val intent = packageManager.getLaunchIntentForPackage(packageName)
+                intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                startActivity(intent)
+                finish()
+            }
+            .setCancelable(false)
+            .show()
     }
 }
