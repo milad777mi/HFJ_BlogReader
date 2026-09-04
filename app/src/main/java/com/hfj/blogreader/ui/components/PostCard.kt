@@ -139,17 +139,17 @@ fun PostCard(
                         }
                     }
                 }
-                // 4. هیچ عکس و فیلمی ندارد
+                // 4. هیچ عکس و فیلمی ندارد → هیچ چیز نمایش داده نشود
                 else -> { /* خالی */ }
             }
 
-            // محتوای کارت
+            // ========== محتوای کارت ==========
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(14.dp)
             ) {
-                // عنوان جدا
+                // عنوان جدا با فونت بزرگتر
                 if (post.title != null && post.title.isNotEmpty()) {
                     Text(
                         text = post.title,
@@ -174,7 +174,7 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // تاریخ (بدون بازدید)
+                // ========== تاریخ (به فرمت درخواستی) ==========
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
