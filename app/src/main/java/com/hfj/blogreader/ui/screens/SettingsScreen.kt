@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
-import kotlinx.coroutines.flow.collectAsState   // ← import جدید
+import kotlinx.coroutines.flow.collectAsState   // ← این خط را اضافه کنید
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,7 +23,6 @@ fun SettingsScreen(
     viewModel: MainViewModel,
     context: Context
 ) {
-    // تغییر: collectAsStateWithLifecycle() → collectAsState()
     val fontScale by viewModel.fontScale.collectAsState()
 
     Scaffold(
