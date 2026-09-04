@@ -1,5 +1,7 @@
 package com.hfj.blogreader.ui.screens
 
+import android.net.Uri
+import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,15 +11,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.hfj.blogreader.ui.theme.LocalFontScale
@@ -30,9 +37,12 @@ fun PostDetailScreen(
     viewModel: MainViewModel,
     navController: NavController
 ) {
+    val context = LocalContext.current
     val posts by viewModel.filteredPosts.collectAsState()
     val post = posts.find { it.id == postId }
     val fontScale = LocalFontScale.current
+
+    var zoomImageUrl by remember { mutableStateOf<String?>(null) }
 
     if (post == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -69,31 +79,46 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            // فیلم
+            // ✅ پخش فیلم با ExoPlayer
             if (post.videoUrl != null) {
-                Box(
+                var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
+
+                LaunchedEffect(post.videoUrl) {
+                    exoPlayer = ExoPlayer.Builder(context).build().apply {
+                        setMediaItem(MediaItem.fromUri(Uri.parse(post.videoUrl)))
+                        prepare()
+                        playWhenReady = false
+                    }
+                }
+
+                DisposableEffect(Unit) {
+                    onDispose {
+                        exoPlayer?.release()
+                        exoPlayer = null
+                    }
+                }
+
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            player = exoPlayer
+                            useController = true
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT
+                            )
+                            minimumHeight = 250.dp.value.toInt()
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(250.dp)
                         .padding(bottom = 12.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.PlayArrow,
-                            contentDescription = "تشغيل الفيديو",
-                            modifier = Modifier.size(72.dp)
-                        )
-                        Text(
-                            "برای پخش فیلم کلیک کنید",
-                            fontSize = 16.sp * fontScale
-                        )
-                    }
-                }
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                )
             }
 
-            // تصاویر (با بزرگنمایی)
+            // ✅ تصاویر با بزرگنمایی
             if (post.imageUrls.isNotEmpty()) {
                 post.imageUrls.forEach { url ->
                     AsyncImage(
@@ -103,15 +128,13 @@ fun PostDetailScreen(
                             .fillMaxWidth()
                             .height(250.dp)
                             .padding(bottom = 12.dp)
-                            .clickable {
-                                // بزرگنمایی با دیالوگ
-                            },
+                            .clickable { zoomImageUrl = url },
                         contentScale = ContentScale.Crop
                     )
                 }
             }
 
-            // محتوا
+            // ✅ محتوا با حفظ خطوط جدید
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -134,43 +157,61 @@ fun PostDetailScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
-                    // متن کامل
+                    // متن کامل با خطوط جدید
                     Text(
-                        post.content,
+                        text = post.content,
                         fontSize = 17.sp * fontScale,
                         lineHeight = 34.sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Divider()
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // تاریخ (با اعداد انگلیسی)
+                    // فقط تاریخ (بدون بازدید)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.End
                     ) {
-                        Row {
-                            Icon(
-                                Icons.Default.DateRange,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(post.date, fontSize = 13.sp * fontScale)
-                        }
-                        Row {
-                            Icon(
-                                Icons.Default.Visibility,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("${post.views} مشاهدة", fontSize = 13.sp * fontScale)
-                        }
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "نوشته شده در ${post.date}",
+                            fontSize = 13.sp * fontScale,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
                     }
                 }
+            }
+        }
+    }
+
+    // ✅ دیالوگ بزرگنمایی عکس
+    zoomImageUrl?.let { url ->
+        Dialog(
+            onDismissRequest = { zoomImageUrl = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.9f))
+                    .clickable { zoomImageUrl = null }
+            ) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
+                )
             }
         }
     }
