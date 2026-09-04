@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add          // ← اضافه شد
-import androidx.compose.material.icons.filled.Remove       // ← اضافه شد
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -99,7 +99,7 @@ fun SettingsScreen(
                                 viewModel.setFontScale(newValue)
                             }
                         ) {
-                            Icon(Icons.Default.Remove, contentDescription = "تصغير")   // ← اصلاح شد
+                            Icon(Icons.Default.Remove, contentDescription = "تصغير")
                         }
 
                         Text(
@@ -114,7 +114,7 @@ fun SettingsScreen(
                                 viewModel.setFontScale(newValue)
                             }
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "تكبير")      // ← اصلاح شد
+                            Icon(Icons.Default.Add, contentDescription = "تكبير")
                         }
                     }
 
