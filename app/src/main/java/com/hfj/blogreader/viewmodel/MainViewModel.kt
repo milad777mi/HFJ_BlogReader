@@ -1,7 +1,6 @@
 package com.hfj.blogreader.viewmodel
 
 import android.content.Context
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hfj.blogreader.data.models.Post
@@ -17,18 +16,25 @@ class MainViewModel(
     private val blogRepo = BlogRepository()
     private val fontManager = FontSizeManager(context)
 
+    // ---------- Font Size ----------
     val fontScale: StateFlow<Float> = fontManager.fontScale
 
     fun setFontScale(scale: Float) {
         fontManager.setFontScale(scale)
     }
 
+    // ---------- Posts ----------
     private val _allPosts = MutableStateFlow<List<Post>>(emptyList())
     val allPosts: StateFlow<List<Post>> = _allPosts
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    // ---------- Error Message ----------
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage
+
+    // ---------- Tabs ----------
     private val _selectedTab = MutableStateFlow("الكل")
     val selectedTab: StateFlow<String> = _selectedTab
 
@@ -53,6 +59,8 @@ class MainViewModel(
         initialValue = emptyList()
     )
 
+    // ---------- Functions ----------
+
     fun selectTab(tab: String) {
         _selectedTab.value = tab
     }
@@ -60,21 +68,16 @@ class MainViewModel(
     fun fetchAllPosts() {
         viewModelScope.launch {
             _isLoading.value = true
+            _errorMessage.value = null
             try {
                 val posts = blogRepo.fetchAllPosts()
                 _allPosts.value = posts
                 if (posts.isEmpty()) {
-                    Toast.makeText(context, "⚠️ هیچ پستی یافت نشد", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "✅ ${posts.size} پست بارگذاری شد", Toast.LENGTH_SHORT).show()
+                    _errorMessage.value = "⚠️ هیچ پستی یافت نشد"
                 }
             } catch (e: Exception) {
+                _errorMessage.value = "❌ خطا در دریافت مطالب: ${e.message}"
                 _allPosts.value = emptyList()
-                Toast.makeText(
-                    context,
-                    "❌ خطا در دریافت مطالب: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
                 e.printStackTrace()
             }
             _isLoading.value = false
@@ -85,11 +88,7 @@ class MainViewModel(
         try {
             fetchAllPosts()
         } catch (e: Exception) {
-            Toast.makeText(
-                context,
-                "❌ خطا در شروع برنامه: ${e.message}",
-                Toast.LENGTH_LONG
-            ).show()
+            _errorMessage.value = "❌ خطا در شروع برنامه: ${e.message}"
             e.printStackTrace()
         }
     }
