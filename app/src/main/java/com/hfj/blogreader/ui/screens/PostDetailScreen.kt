@@ -42,6 +42,8 @@ fun PostDetailScreen(
     val post = posts.find { it.id == postId }
     val fontScale = LocalFontScale.current
 
+    // برای بزرگنمایی عکس
+    var showZoomDialog by remember { mutableStateOf(false) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
 
     if (post == null) {
@@ -79,7 +81,7 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            // ✅ پخش فیلم با ExoPlayer
+            // ========== فیلم با ExoPlayer ==========
             if (post.videoUrl != null) {
                 var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
 
@@ -118,7 +120,7 @@ fun PostDetailScreen(
                 )
             }
 
-            // ✅ تصاویر با بزرگنمایی
+            // ========== تصاویر با قابلیت بزرگنمایی ==========
             if (post.imageUrls.isNotEmpty()) {
                 post.imageUrls.forEach { url ->
                     AsyncImage(
@@ -128,13 +130,16 @@ fun PostDetailScreen(
                             .fillMaxWidth()
                             .height(250.dp)
                             .padding(bottom = 12.dp)
-                            .clickable { zoomImageUrl = url },
+                            .clickable {
+                                zoomImageUrl = url
+                                showZoomDialog = true
+                            },
                         contentScale = ContentScale.Crop
                     )
                 }
             }
 
-            // ✅ محتوا با حفظ خطوط جدید
+            // ========== محتوا با حفظ خطوط جدید ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -146,7 +151,6 @@ fun PostDetailScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    // عنوان
                     if (post.title != null && post.title.isNotEmpty()) {
                         Text(
                             post.title!!,
@@ -157,7 +161,6 @@ fun PostDetailScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
-                    // متن کامل با خطوط جدید
                     Text(
                         text = post.content,
                         fontSize = 17.sp * fontScale,
@@ -192,20 +195,20 @@ fun PostDetailScreen(
         }
     }
 
-    // ✅ دیالوگ بزرگنمایی عکس
-    zoomImageUrl?.let { url ->
+    // ========== دیالوگ بزرگنمایی عکس ==========
+    if (showZoomDialog && zoomImageUrl != null) {
         Dialog(
-            onDismissRequest = { zoomImageUrl = null },
+            onDismissRequest = { showZoomDialog = false },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.9f))
-                    .clickable { zoomImageUrl = null }
+                    .clickable { showZoomDialog = false }
             ) {
                 AsyncImage(
-                    model = url,
+                    model = zoomImageUrl,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
