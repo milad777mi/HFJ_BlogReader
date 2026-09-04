@@ -1,71 +1,69 @@
 package com.hfj.blogreader
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.hfj.blogreader.data.repository.BlogRepository
-import kotlinx.coroutines.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.hfj.blogreader.ui.screens.HomeScreen
+import com.hfj.blogreader.ui.screens.PostDetailScreen
+import com.hfj.blogreader.ui.screens.SettingsScreen
+import com.hfj.blogreader.ui.theme.HFJBlogReaderTheme
+import com.hfj.blogreader.ui.theme.LocalFontScale
+import com.hfj.blogreader.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            var resultText by remember { mutableStateOf("⏳ منتظر کلیک...") }
-            var isLoading by remember { mutableStateOf(false) }
+            val viewModel: MainViewModel = viewModel()
+            val fontScale by viewModel.fontScale.collectAsState()
+            val navController = rememberNavController()
 
-            Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(resultText, style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        isLoading = true
-                        resultText = "🔄 در حال دریافت..."
-                        GlobalScope.launch(Dispatchers.Main) {
-                            try {
-                                val repo = BlogRepository()
-                                val posts = repo.fetchAllPosts()
-                                if (posts.isEmpty()) {
-                                    resultText = "⚠️ هیچ پستی یافت نشد"
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "⚠️ هیچ پستی یافت نشد",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                } else {
-                                    resultText = "✅ ${posts.size} پست دریافت شد"
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "✅ ${posts.size} پست دریافت شد",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                            } catch (e: Exception) {
-                                resultText = "❌ خطا: ${e.message}"
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "❌ خطا: ${e.message}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                e.printStackTrace()
-                            }
-                            isLoading = false
-                        }
-                    },
-                    enabled = !isLoading
+            HFJBlogReaderTheme {
+                CompositionLocalProvider(
+                    LocalFontScale provides fontScale
                 ) {
-                    Text(if (isLoading) "در حال دریافت..." else "📥 دریافت پست‌ها")
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        NavHost(
+                            navController = navController,
+                            startDestination = "home"
+                        ) {
+                            composable("home") {
+                                HomeScreen(
+                                    viewModel = viewModel,
+                                    navController = navController
+                                )
+                            }
+                            composable("post/{postId}") { backStackEntry ->
+                                val id = backStackEntry.arguments?.getString("postId") ?: ""
+                                PostDetailScreen(
+                                    postId = id,
+                                    viewModel = viewModel,
+                                    navController = navController
+                                )
+                            }
+                            composable("settings") {
+                                SettingsScreen(
+                                    viewModel = viewModel,
+                                    context = this@MainActivity
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
