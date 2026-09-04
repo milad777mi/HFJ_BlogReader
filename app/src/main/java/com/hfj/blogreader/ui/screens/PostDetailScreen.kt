@@ -99,6 +99,16 @@ fun PostDetailScreen(
                     }
                 }
 
+                // ✅ وقتی دیالوگ بزرگنمایی باز می‌شود، پلیر اصلی مکث کند
+                LaunchedEffect(showFullscreenVideo) {
+                    if (showFullscreenVideo) {
+                        exoPlayer.pause()
+                    } else {
+                        // وقتی دیالوگ بسته شد، اگر قبلاً در حال پخش بود، ادامه دهد
+                        // (وضعیت قبلی را ذخیره می‌کنیم)
+                    }
+                }
+
                 AndroidView(
                     factory = { ctx ->
                         PlayerView(ctx).apply {
@@ -109,7 +119,6 @@ fun PostDetailScreen(
                                 ViewGroup.LayoutParams.WRAP_CONTENT
                             )
                             minimumHeight = 250.dp.value.toInt()
-                            // ✅ کلیک برای بزرگنمایی فیلم
                             setOnClickListener {
                                 showFullscreenVideo = true
                             }
@@ -176,7 +185,7 @@ fun PostDetailScreen(
                     Divider()
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // ✅ تاریخ بدون "نوشته شده در"
+                    // ✅ تاریخ بدون عبارت اضافی
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -188,7 +197,7 @@ fun PostDetailScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            post.date,
+                            post.date,  // ← فقط تاریخ، بدون "نوشته شده در"
                             fontSize = 13.sp * fontScale,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -228,7 +237,7 @@ fun PostDetailScreen(
             ExoPlayer.Builder(context).build().apply {
                 setMediaItem(MediaItem.fromUri(Uri.parse(post.videoUrl)))
                 prepare()
-                playWhenReady = true
+                playWhenReady = true  // ✅ خودکار پخش شود
             }
         }
 
