@@ -14,11 +14,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
+import kotlinx.coroutines.flow.collectAsState   // ← import جدید
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,7 +27,8 @@ fun PostDetailScreen(
     viewModel: MainViewModel,
     navController: NavController
 ) {
-    val posts by viewModel.filteredPosts.collectAsStateWithLifecycle()
+    // تغییر: collectAsStateWithLifecycle() → collectAsState()
+    val posts by viewModel.filteredPosts.collectAsState()
     val post = posts.find { it.id == postId }
     val fontScale = LocalFontScale.current
 
