@@ -33,7 +33,7 @@ object StatFetcher {
                     (function() {
                         var text = document.body.innerText;
                         function extract(keyword) {
-                            var regex = new RegExp(keyword + '\\s*[::]?\\s*(\\d+)', 'i');
+                            var regex = new RegExp(keyword + '\\s*[:]?\\s*(\\d+)');
                             var match = text.match(regex);
                             return match ? match[1] : '0';
                         }
