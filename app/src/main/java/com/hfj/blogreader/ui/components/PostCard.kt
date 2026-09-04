@@ -1,6 +1,6 @@
 package com.hfj.blogreader.ui.components
 
-import androidx.compose.foundation.background          // ← این خط اضافه شد
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,8 +23,7 @@ import com.hfj.blogreader.ui.theme.LocalFontScale
 @Composable
 fun PostCard(
     post: Post,
-    onHashtagTap: (String) -> Unit,
-    onCardClick: () -> Unit
+    onCardClick: () -> Unit   // فقط دو پارامتر
 ) {
     val fontScale = LocalFontScale.current
 
@@ -48,7 +47,7 @@ fun PostCard(
                         .fillMaxWidth()
                         .height(190.dp)
                         .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),   // ← این خط مشکل داشت
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -85,15 +84,6 @@ fun PostCard(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // هشتگ‌ها
-                if (post.hashtags.isNotEmpty()) {
-                    HashtagChips(
-                        hashtags = post.hashtags.take(5),
-                        onTagTap = onHashtagTap
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
