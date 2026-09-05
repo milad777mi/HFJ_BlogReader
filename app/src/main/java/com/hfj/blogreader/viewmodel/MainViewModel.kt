@@ -1,6 +1,7 @@
 package com.hfj.blogreader.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hfj.blogreader.data.models.Post
@@ -18,12 +19,14 @@ class MainViewModel(
     private val blogRepo = BlogRepository()
     private val fontManager = FontSizeManager(getApplication())
 
+    // ---------- Font Size ----------
     val fontScale: StateFlow<Float> = fontManager.fontScale
 
     fun setFontScale(scale: Float) {
         fontManager.setFontScale(scale)
     }
 
+    // ---------- Posts ----------
     private val _allPosts = MutableStateFlow<List<Post>>(emptyList())
     val allPosts: StateFlow<List<Post>> = _allPosts
 
@@ -35,8 +38,11 @@ class MainViewModel(
 
     val filteredPosts: StateFlow<List<Post>> = _allPosts
 
+    // ---------- Stats ----------
     private val _stats = MutableStateFlow(BlogStats())
     val stats: StateFlow<BlogStats> = _stats
+
+    // ---------- Functions ----------
 
     fun fetchAllPosts() {
         viewModelScope.launch {
@@ -57,10 +63,23 @@ class MainViewModel(
         }
     }
 
-    fun loadStats(context: android.content.Context) {
+    // ✅ افزایش آمار هنگام ورود به برنامه (خودکار)
+    fun incrementStats(context: Context) {
         viewModelScope.launch {
             try {
-                val result = StatFetcher.fetchStats(context)
+                val result = StatFetcher.incrementAndFetchStats(context)
+                _stats.value = result
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ✅ دریافت آمار (دستی)
+    fun loadStats(context: Context) {
+        viewModelScope.launch {
+            try {
+                val result = StatFetcher.fetchStatsOnly()
                 _stats.value = result
             } catch (e: Exception) {
                 e.printStackTrace()
