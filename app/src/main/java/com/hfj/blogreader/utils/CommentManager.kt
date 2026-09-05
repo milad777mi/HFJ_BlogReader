@@ -1,6 +1,7 @@
 package com.hfj.blogreader.utils
 
 import android.content.Context
+import com.hfj.blogreader.data.models.Comment   // ✅ این خط را اضافه کنید
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -12,7 +13,6 @@ object CommentManager {
 
     private const val WORKER_URL = "https://miladhfgbnmbnn.mhmdkwarkw.workers.dev"
 
-    // دریافت نظرات تاییدشده
     suspend fun getApprovedComments(postId: String): List<Comment> = withContext(Dispatchers.IO) {
         try {
             val url = URL("$WORKER_URL/api/comments?postId=$postId")
@@ -46,7 +46,6 @@ object CommentManager {
         }
     }
 
-    // ثبت نظر جدید
     suspend fun submitComment(postId: String, userId: String, userName: String, text: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val url = URL("$WORKER_URL/api/comments")
