@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -43,10 +45,15 @@ class MainActivity : ComponentActivity() {
 
         // اجرای عادی برنامه
         setContent {
-            // ✅ درست: viewModel() حالا می‌داند چگونه MainViewModel را بسازد
             val viewModel: MainViewModel = viewModel()
             val fontScale by viewModel.fontScale.collectAsState()
             val navController = rememberNavController()
+            val context = LocalContext.current
+
+            // ✅ افزایش آمار فقط یک بار هنگام باز شدن برنامه
+            LaunchedEffect(Unit) {
+                viewModel.incrementStats(context)
+            }
 
             HFJBlogReaderTheme {
                 CompositionLocalProvider(
