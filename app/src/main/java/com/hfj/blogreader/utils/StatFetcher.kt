@@ -15,7 +15,7 @@ data class BlogStats(
 object StatFetcher {
 
     // ✅ آدرس Worker خود را اینجا قرار دهید
-    private const val WORKER_URL = "https://Miladhfgbnmbnn.workers.dev"
+    private const val WORKER_URL = "https://miladhfgbnmbnn.mhmdkwarkw.workers.dev"
 
     suspend fun incrementAndFetchStats(context: Context): BlogStats = withContext(Dispatchers.IO) {
         try {
