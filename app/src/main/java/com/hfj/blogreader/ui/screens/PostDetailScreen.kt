@@ -10,7 +10,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -29,6 +31,7 @@ import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
+import com.hfj.blogreader.utils.UserManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +46,16 @@ fun PostDetailScreen(
     val fontScale = LocalFontScale.current
 
     var showFullscreenVideo by remember { mutableStateOf(false) }
+
+    // لایک
+    val userId = UserManager.getUserId(context)
+    val isLiked = viewModel.isLiked(postId)
+    val likeCount = viewModel.getLikeCount(postId)
+
+    // بارگذاری وضعیت لایک
+    LaunchedEffect(postId) {
+        viewModel.loadLikeStatus(postId, userId)
+    }
 
     if (post == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -79,7 +92,7 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            // ========== فقط فیلم (در صورت وجود) ==========
+            // ========== فیلم ==========
             if (post.videoUrl != null) {
                 val exoPlayer = remember {
                     ExoPlayer.Builder(context).build().apply {
@@ -95,7 +108,6 @@ fun PostDetailScreen(
                     }
                 }
 
-                // مکث پلیر هنگام باز شدن دیالوگ تمام‌صفحه
                 LaunchedEffect(showFullscreenVideo) {
                     if (showFullscreenVideo) {
                         exoPlayer.pause()
@@ -124,8 +136,6 @@ fun PostDetailScreen(
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
             }
-
-            // ========== ❌ عکس حذف شد (فقط در کارت نمایش داده می‌شود) ==========
 
             // ========== محتوا ==========
             Card(
@@ -161,29 +171,58 @@ fun PostDetailScreen(
                     Divider()
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // تاریخ (بدون "ساعت")
+                    // ========== تاریخ و لایک ==========
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Default.DateRange,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            post.date,
-                            fontSize = 13.sp * fontScale,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
+                        // تاریخ
+                        Row {
+                            Icon(
+                                Icons.Default.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                post.date,
+                                fontSize = 13.sp * fontScale,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+
+                        // دکمه لایک
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    if (!viewModel.isLiked(postId)) {
+                                        viewModel.toggleLike(postId, userId)
+                                    }
+                                },
+                                enabled = !isLiked
+                            ) {
+                                Icon(
+                                    if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                    contentDescription = "لایک",
+                                    tint = if (isLiked) Color.Red else Color.Gray
+                                )
+                            }
+                            Text(
+                                text = likeCount.toString(),
+                                fontSize = 14.sp * fontScale,
+                                color = if (isLiked) Color.Red else Color.Gray
+                            )
+                        }
                     }
                 }
             }
         }
     }
 
-    // ========== دیالوگ بزرگنمایی فیلم (تمام‌صفحه) ==========
+    // ========== دیالوگ بزرگنمایی فیلم ==========
     if (showFullscreenVideo) {
         val fullscreenPlayer = remember {
             ExoPlayer.Builder(context).build().apply {
