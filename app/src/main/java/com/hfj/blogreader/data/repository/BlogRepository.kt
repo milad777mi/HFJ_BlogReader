@@ -75,27 +75,21 @@ class BlogRepository {
         return posts
     }
 
-    // ✅ استخراج تاریخ بدون عبارت‌های اضافی
+    // ✅ استخراج تاریخ و حذف کلمه "ساعت"
     private fun extractFullDate(text: String): String {
-        // ابتدا همه‌ی عبارت‌های اضافی را حذف می‌کنیم
-        var cleaned = text
-            .replace("+ نوشته شده در ", "")  // حذف "+ نوشته شده در "
-            .replace("نوشته شده در ", "")    // حذف "نوشته شده در "
-            .replace(" توسط.*$".toRegex(), "") // حذف "توسط ..."
+        // حذف عبارت‌های اضافی ابتدا و انتها
+        var date = text
+            .replace(Regex("""^\+?\s*نوشته شده در تاريخ\s*"""), "")
+            .replace(Regex("""\s*توسط.*$"""), "")
             .trim()
 
-        // حذف "ساعت" تکراری در آخر
-        cleaned = cleaned.replace(Regex("""ساعت\s*(\d+:\d+)\s*ساعت"""), "ساعت $1")
-        cleaned = cleaned.replace(Regex("""ساعت\s*(\d+:\d+)$"""), "ساعت $1")
+        // حذف تمام occurrences کلمه "ساعت" همراه با فاصله‌های اطراف
+        // مثال: "جمعه سیزدهم شهریور ۱۴۰۵ ساعت 15:28" → "جمعه سیزدهم شهریور ۱۴۰۵ 15:28"
+        date = date.replace(Regex("""\s*ساعت\s*"""), " ").trim()
 
-        // اگر باز هم "ساعت" اضافی در آخر بود، حذفش کن
-        cleaned = cleaned.replace(Regex("""ساعت\s*$"""), "")
+        // اگر "ساعت" اضافی در انتها باقی ماند (مثل "ساعت 15:28 ساعت")، آن را حذف کن
+        date = date.replace(Regex("""\s*ساعت\s*$"""), "").trim()
 
-        // اگر تاریخ به درستی استخراج نشد، مقدار پیش‌فرض برگردان
-        return if (cleaned.isNotEmpty()) {
-            cleaned
-        } else {
-            "تاریخ نامشخص"
-        }
+        return if (date.isNotEmpty()) date else "تاریخ نامشخص"
     }
 }
