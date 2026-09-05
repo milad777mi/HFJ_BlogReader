@@ -19,7 +19,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -29,6 +31,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 import com.hfj.blogreader.utils.UserManager
@@ -46,13 +49,19 @@ fun PostDetailScreen(
     val fontScale = LocalFontScale.current
 
     var showFullscreenVideo by remember { mutableStateOf(false) }
+    var zoomImageUrl by remember { mutableStateOf<String?>(null) }
 
-    // لایک
+    // ✅ لایک
     val userId = UserManager.getUserId(context)
-    val isLiked = viewModel.isLiked(postId)
-    val likeCount = viewModel.getLikeCount(postId)
 
-    // بارگذاری وضعیت لایک
+    // ✅ دریافت وضعیت لایک‌ها به‌صورت مستقیم از StateFlow
+    val likedStatus by viewModel.likedStatus.collectAsState()
+    val likes by viewModel.likes.collectAsState()
+
+    val isLiked = likedStatus[postId] ?: false
+    val likeCount = likes[postId] ?: 0
+
+    // بارگذاری وضعیت لایک هنگام ورود
     LaunchedEffect(postId) {
         viewModel.loadLikeStatus(postId, userId)
     }
@@ -92,7 +101,7 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            // ========== فیلم ==========
+            // ========== نمایش فیلم (در صورت وجود) ==========
             if (post.videoUrl != null) {
                 val exoPlayer = remember {
                     ExoPlayer.Builder(context).build().apply {
@@ -135,6 +144,22 @@ fun PostDetailScreen(
                         .padding(bottom = 12.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
+            }
+
+            // ========== نمایش تصاویر (فقط در صورتی که فیلم وجود نداشته باشد) ==========
+            if (post.videoUrl == null && post.imageUrls.isNotEmpty()) {
+                post.imageUrls.forEach { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp)
+                            .padding(bottom = 12.dp)
+                            .clickable { zoomImageUrl = url },
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
 
             // ========== محتوا ==========
@@ -192,28 +217,29 @@ fun PostDetailScreen(
                             )
                         }
 
-                        // دکمه لایک
+                        // ✅ دکمه لایک با نمایش تعداد
                         Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    if (!viewModel.isLiked(postId)) {
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable {
+                                    if (!isLiked) {
                                         viewModel.toggleLike(postId, userId)
                                     }
-                                },
-                                enabled = !isLiked
-                            ) {
-                                Icon(
-                                    if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                    contentDescription = "لایک",
-                                    tint = if (isLiked) Color.Red else Color.Gray
-                                )
-                            }
+                                }
+                                .padding(4.dp)
+                        ) {
+                            Icon(
+                                if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = "لایک",
+                                tint = if (isLiked) Color.Red else Color.Gray,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = likeCount.toString(),
-                                fontSize = 14.sp * fontScale,
-                                color = if (isLiked) Color.Red else Color.Gray
+                                fontSize = 16.sp,
+                                color = if (isLiked) Color.Red else Color.Gray,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -263,6 +289,30 @@ fun PostDetailScreen(
                         }
                     },
                     modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+
+    // ========== دیالوگ بزرگنمایی تصویر ==========
+    if (zoomImageUrl != null) {
+        Dialog(
+            onDismissRequest = { zoomImageUrl = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.9f))
+                    .clickable { zoomImageUrl = null }
+            ) {
+                AsyncImage(
+                    model = zoomImageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
                 )
             }
         }
