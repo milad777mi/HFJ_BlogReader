@@ -20,14 +20,11 @@ class MainViewModel(
     private val blogRepo = BlogRepository()
     private val fontManager = FontSizeManager(getApplication())
 
-    // ---------- Font Size ----------
     val fontScale: StateFlow<Float> = fontManager.fontScale
-
     fun setFontScale(scale: Float) {
         fontManager.setFontScale(scale)
     }
 
-    // ---------- Posts ----------
     private val _allPosts = MutableStateFlow<List<Post>>(emptyList())
     val allPosts: StateFlow<List<Post>> = _allPosts
 
@@ -39,18 +36,15 @@ class MainViewModel(
 
     val filteredPosts: StateFlow<List<Post>> = _allPosts
 
-    // ---------- Stats ----------
     private val _stats = MutableStateFlow(BlogStats())
     val stats: StateFlow<BlogStats> = _stats
 
-    // ---------- Likes ----------
+    // ✅ Likes
     private val _likes = MutableStateFlow<Map<String, Int>>(emptyMap())
     val likes: StateFlow<Map<String, Int>> = _likes
 
     private val _likedStatus = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val likedStatus: StateFlow<Map<String, Boolean>> = _likedStatus
-
-    // ---------- Functions ----------
 
     fun fetchAllPosts() {
         viewModelScope.launch {
@@ -71,7 +65,6 @@ class MainViewModel(
         }
     }
 
-    // ✅ آمار
     fun incrementStats(context: Context) {
         viewModelScope.launch {
             try {
@@ -94,22 +87,17 @@ class MainViewModel(
         }
     }
 
-    // ✅ لایک
-    fun getLikeCount(postId: String): Int {
-        return _likes.value[postId] ?: 0
-    }
-
-    fun isLiked(postId: String): Boolean {
-        return _likedStatus.value[postId] ?: false
-    }
+    // ✅ Like functions
+    fun getLikeCount(postId: String): Int = _likes.value[postId] ?: 0
+    fun isLiked(postId: String): Boolean = _likedStatus.value[postId] ?: false
 
     fun toggleLike(postId: String, userId: String) {
         viewModelScope.launch {
             try {
                 val newCount = LikeManager.likePost(postId, userId)
                 if (newCount > 0) {
-                    _likes.value = _likes.value + (postId to newCount)
-                    _likedStatus.value = _likedStatus.value + (postId to true)
+                    _likes.update { current -> current + (postId to newCount) }
+                    _likedStatus.update { current -> current + (postId to true) }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -122,8 +110,8 @@ class MainViewModel(
             try {
                 val liked = LikeManager.getLikeStatus(postId, userId)
                 val count = LikeManager.getLikeCount(postId)
-                _likedStatus.value = _likedStatus.value + (postId to liked)
-                _likes.value = _likes.value + (postId to count)
+                _likedStatus.update { current -> current + (postId to liked) }
+                _likes.update { current -> current + (postId to count) }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
