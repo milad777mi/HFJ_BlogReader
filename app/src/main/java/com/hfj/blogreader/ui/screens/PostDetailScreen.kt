@@ -32,6 +32,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.github.mrnouri.zoomable.zoomable   // ✅ import برای بزرگنمایی
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 import com.hfj.blogreader.utils.UserManager
@@ -53,8 +54,6 @@ fun PostDetailScreen(
 
     // ✅ لایک
     val userId = UserManager.getUserId(context)
-
-    // ✅ دریافت وضعیت لایک‌ها به‌صورت مستقیم از StateFlow
     val likedStatus by viewModel.likedStatus.collectAsState()
     val likes by viewModel.likes.collectAsState()
 
@@ -217,7 +216,7 @@ fun PostDetailScreen(
                             )
                         }
 
-                        // ✅ دکمه لایک با نمایش تعداد
+                        // دکمه لایک با نمایش تعداد
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -294,7 +293,7 @@ fun PostDetailScreen(
         }
     }
 
-    // ========== دیالوگ بزرگنمایی تصویر ==========
+    // ========== دیالوگ بزرگنمایی تصویر با قابلیت پینچ و زوم ==========
     if (zoomImageUrl != null) {
         Dialog(
             onDismissRequest = { zoomImageUrl = null },
@@ -304,14 +303,15 @@ fun PostDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.9f))
-                    .clickable { zoomImageUrl = null }
+                    .clickable { zoomImageUrl = null }  // کلیک برای بستن
             ) {
                 AsyncImage(
                     model = zoomImageUrl,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(16.dp)
+                        .zoomable(),  // ✅ بزرگنمایی با دو انگشت
                     contentScale = ContentScale.Fit
                 )
             }
