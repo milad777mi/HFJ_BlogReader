@@ -31,6 +31,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
+import coil.compose.AsyncImage   // ✅ این خط را اضافه کنید
 import com.hfj.blogreader.ui.components.ZoomableImage
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
@@ -51,7 +52,6 @@ fun PostDetailScreen(
     var showFullscreenVideo by remember { mutableStateOf(false) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
 
-    // ✅ لایک
     val userId = UserManager.getUserId(context)
     val likedStatus by viewModel.likedStatus.collectAsState()
     val likes by viewModel.likes.collectAsState()
@@ -59,7 +59,6 @@ fun PostDetailScreen(
     val isLiked = likedStatus[postId] ?: false
     val likeCount = likes[postId] ?: 0
 
-    // بارگذاری وضعیت لایک هنگام ورود
     LaunchedEffect(postId) {
         viewModel.loadLikeStatus(postId, userId)
     }
@@ -99,7 +98,7 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            // ========== نمایش فیلم (در صورت وجود) ==========
+            // ========== فیلم ==========
             if (post.videoUrl != null) {
                 val exoPlayer = remember {
                     ExoPlayer.Builder(context).build().apply {
@@ -144,7 +143,7 @@ fun PostDetailScreen(
                 )
             }
 
-            // ========== نمایش تصاویر (فقط در صورتی که فیلم وجود نداشته باشد) ==========
+            // ========== تصاویر ==========
             if (post.videoUrl == null && post.imageUrls.isNotEmpty()) {
                 post.imageUrls.forEach { url ->
                     AsyncImage(
@@ -176,7 +175,7 @@ fun PostDetailScreen(
                         Text(
                             post.title!!,
                             fontSize = 22.sp * fontScale,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -194,13 +193,11 @@ fun PostDetailScreen(
                     Divider()
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // ========== تاریخ و لایک ==========
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // تاریخ
                         Row {
                             Icon(
                                 Icons.Default.DateRange,
@@ -215,7 +212,6 @@ fun PostDetailScreen(
                             )
                         }
 
-                        // دکمه لایک با نمایش تعداد
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -292,7 +288,7 @@ fun PostDetailScreen(
         }
     }
 
-    // ========== دیالوگ بزرگنمایی تصویر با پینچ و زوم (سفارشی) ==========
+    // ========== دیالوگ بزرگنمایی تصویر ==========
     if (zoomImageUrl != null) {
         Dialog(
             onDismissRequest = { zoomImageUrl = null },
@@ -302,7 +298,7 @@ fun PostDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.9f))
-                    .clickable { zoomImageUrl = null }  // کلیک برای بستن
+                    .clickable { zoomImageUrl = null }
             ) {
                 ZoomableImage(
                     model = zoomImageUrl,
