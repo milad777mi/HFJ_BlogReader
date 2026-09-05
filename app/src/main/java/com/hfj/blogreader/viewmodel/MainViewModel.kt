@@ -5,11 +5,13 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hfj.blogreader.data.models.Post
+import com.hfj.blogreader.data.models.Comment
 import com.hfj.blogreader.data.repository.BlogRepository
 import com.hfj.blogreader.utils.FontSizeManager
 import com.hfj.blogreader.utils.BlogStats
 import com.hfj.blogreader.utils.StatFetcher
 import com.hfj.blogreader.utils.LikeManager
+import com.hfj.blogreader.utils.CommentManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -39,12 +41,16 @@ class MainViewModel(
     private val _stats = MutableStateFlow(BlogStats())
     val stats: StateFlow<BlogStats> = _stats
 
-    // ✅ Likes
+    // Likes
     private val _likes = MutableStateFlow<Map<String, Int>>(emptyMap())
     val likes: StateFlow<Map<String, Int>> = _likes
 
     private val _likedStatus = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val likedStatus: StateFlow<Map<String, Boolean>> = _likedStatus
+
+    // ✅ Comments
+    private val _comments = MutableStateFlow<Map<String, List<Comment>>>(emptyMap())
+    val comments: StateFlow<Map<String, List<Comment>>> = _comments
 
     fun fetchAllPosts() {
         viewModelScope.launch {
@@ -87,7 +93,7 @@ class MainViewModel(
         }
     }
 
-    // ✅ Like functions
+    // Like functions
     fun getLikeCount(postId: String): Int = _likes.value[postId] ?: 0
     fun isLiked(postId: String): Boolean = _likedStatus.value[postId] ?: false
 
@@ -96,7 +102,6 @@ class MainViewModel(
             try {
                 val newCount = LikeManager.likePost(postId, userId)
                 if (newCount > 0) {
-                    // ✅ به‌روزرسانی مستقیم با value
                     val currentLikes = _likes.value.toMutableMap()
                     currentLikes[postId] = newCount
                     _likes.value = currentLikes
@@ -124,6 +129,34 @@ class MainViewModel(
                 val currentLikes = _likes.value.toMutableMap()
                 currentLikes[postId] = count
                 _likes.value = currentLikes
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ✅ Comment functions
+    fun loadComments(postId: String) {
+        viewModelScope.launch {
+            try {
+                val list = CommentManager.getApprovedComments(postId)
+                val currentMap = _comments.value.toMutableMap()
+                currentMap[postId] = list
+                _comments.value = currentMap
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun submitComment(postId: String, userId: String, userName: String, text: String) {
+        viewModelScope.launch {
+            try {
+                val success = CommentManager.submitComment(postId, userId, userName, text)
+                if (success) {
+                    // نظر برای تایید ارسال شد، می‌توانیم یک پیام موفقیت نمایش دهیم
+                    // اما نظرات بلافاصله نمایش داده نمی‌شوند تا تایید شوند
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
