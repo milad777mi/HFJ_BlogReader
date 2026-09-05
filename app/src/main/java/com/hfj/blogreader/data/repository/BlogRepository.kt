@@ -43,7 +43,10 @@ class BlogRepository {
                 val title = link?.text()?.trim() ?: ""
 
                 val contentDiv = postElement.select(".postcontent").first()
-                val text = contentDiv?.text()?.trim() ?: ""
+                
+                // ✅ استخراج HTML و تبدیل تگ‌ها به خط جدید
+                val htmlContent = contentDiv?.html() ?: ""
+                val text = preserveLineBreaks(htmlContent)
 
                 val imageUrls = contentDiv?.select("img")?.mapNotNull { img ->
                     img.attr("src").takeIf { it.isNotEmpty() && it.startsWith("http") }
@@ -75,24 +78,35 @@ class BlogRepository {
         return posts
     }
 
-    // ✅ استخراج تاریخ و حذف کامل "+ نوشته شده در" و "ساعت"
+    // ✅ تبدیل تگ‌های HTML به خط جدید و حذف تگ‌های اضافی
+    private fun preserveLineBreaks(html: String): String {
+        var text = html
+            .replace("<br>", "\n")
+            .replace("<br />", "\n")
+            .replace("<br/>", "\n")
+            .replace("</p>", "\n")
+            .replace("<p>", "")
+            .replace(Regex("<[^>]*>"), "") // حذف بقیه تگ‌ها
+            .trim()
+
+        // تبدیل چند خط خالی پشت سر هم به یک خط
+        text = text.replace(Regex("\n{2,}"), "\n")
+
+        return text
+    }
+
+    // ✅ استخراج تاریخ و حذف "+ نوشته شده در" و "ساعت"
     private fun extractFullDate(text: String): String {
-        // 1. حذف "+ نوشته شده در " یا "نوشته شده در "
         var date = text
             .replace(Regex("""^\+?\s*نوشته شده در\s*"""), "")
             .replace(Regex("""\s*توسط.*$"""), "")
             .trim()
 
-        // 2. حذف کلمه "ساعت" و فاصله‌های اضافی
         date = date
             .replace(Regex("""\s*ساعت\s*"""), " ")
             .replace(Regex("""\s*ساعت\s*$"""), "")
             .trim()
 
-        // 3. اگر باز هم "ساعت" اضافی در وسط باقی ماند (مثلاً "ساعت 15:28 ساعت")
-        date = date.replace(Regex("""ساعت\s*(\d+:\d+)\s*ساعت"""), "$1")
-
-        // 4. اگر چند فاصله پشت سر هم بود، به یک فاصله تبدیل کن
         date = date.replace(Regex("""\s+"""), " ").trim()
 
         return if (date.isNotEmpty()) date else "تاریخ نامشخص"
