@@ -96,8 +96,14 @@ class MainViewModel(
             try {
                 val newCount = LikeManager.likePost(postId, userId)
                 if (newCount > 0) {
-                    _likes.update { current -> current + (postId to newCount) }
-                    _likedStatus.update { current -> current + (postId to true) }
+                    // ✅ به‌روزرسانی مستقیم با value
+                    val currentLikes = _likes.value.toMutableMap()
+                    currentLikes[postId] = newCount
+                    _likes.value = currentLikes
+
+                    val currentStatus = _likedStatus.value.toMutableMap()
+                    currentStatus[postId] = true
+                    _likedStatus.value = currentStatus
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -110,8 +116,14 @@ class MainViewModel(
             try {
                 val liked = LikeManager.getLikeStatus(postId, userId)
                 val count = LikeManager.getLikeCount(postId)
-                _likedStatus.update { current -> current + (postId to liked) }
-                _likes.update { current -> current + (postId to count) }
+
+                val currentStatus = _likedStatus.value.toMutableMap()
+                currentStatus[postId] = liked
+                _likedStatus.value = currentStatus
+
+                val currentLikes = _likes.value.toMutableMap()
+                currentLikes[postId] = count
+                _likes.value = currentLikes
             } catch (e: Exception) {
                 e.printStackTrace()
             }
