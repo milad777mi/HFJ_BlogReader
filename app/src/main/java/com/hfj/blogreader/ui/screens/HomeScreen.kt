@@ -31,10 +31,10 @@ fun HomeScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val fontScale = LocalFontScale.current
 
-    // ✅ افزایش آمار خودکار هنگام ورود به برنامه
-    LaunchedEffect(Unit) {
-        viewModel.incrementStats(context)
-    }
+    // ❌ این خط را حذف کنید (افزایش آمار به MainActivity منتقل شده است)
+    // LaunchedEffect(Unit) {
+    //     viewModel.incrementStats(context)
+    // }
 
     Scaffold(
         topBar = {
