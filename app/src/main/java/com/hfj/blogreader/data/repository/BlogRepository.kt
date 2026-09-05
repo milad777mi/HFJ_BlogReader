@@ -77,19 +77,23 @@ class BlogRepository {
 
     // ✅ استخراج تاریخ و حذف کلمه "ساعت"
     private fun extractFullDate(text: String): String {
-        // حذف عبارت‌های اضافی ابتدا و انتها
-        var date = text
-            .replace(Regex("""^\+?\s*نوشته شده در تاريخ\s*"""), "")
-            .replace(Regex("""\s*توسط.*$"""), "")
-            .trim()
+        // استخراج بخش تاریخ از متن
+        val pattern = Regex("""نوشته شده در تاريخ (.*?) توسط""")
+        val match = pattern.find(text)
+        var datePart = match?.groupValues?.get(1)?.trim() ?: ""
 
-        // حذف تمام occurrences کلمه "ساعت" همراه با فاصله‌های اطراف
-        // مثال: "جمعه سیزدهم شهریور ۱۴۰۵ ساعت 15:28" → "جمعه سیزدهم شهریور ۱۴۰۵ 15:28"
-        date = date.replace(Regex("""\s*ساعت\s*"""), " ").trim()
+        // اگر الگوی بالا کار نکرد، از fallback استفاده کن
+        if (datePart.isEmpty()) {
+            datePart = text.replace("نوشته شده در تاريخ ", "").replace(" توسط.*$".toRegex(), "").trim()
+        }
 
-        // اگر "ساعت" اضافی در انتها باقی ماند (مثل "ساعت 15:28 ساعت")، آن را حذف کن
-        date = date.replace(Regex("""\s*ساعت\s*$"""), "").trim()
+        // ✅ حذف کلمه "ساعت" و فاصله‌های اضافی
+        // مثال: "جمعه سیزدهم شهریور ۱۴۰۵ ساعت 23:10" → "جمعه سیزدهم شهریور ۱۴۰۵ 23:10"
+        datePart = datePart.replace(Regex("""\s*ساعت\s*"""), " ").trim()
 
-        return if (date.isNotEmpty()) date else "تاریخ نامشخص"
+        // اگر بیش از یک "ساعت" وجود داشت (مثل "ساعت 15:28 ساعت")، آن را هم حذف کن
+        datePart = datePart.replace(Regex("""\s*ساعت\s*$"""), "").trim()
+
+        return if (datePart.isNotEmpty()) datePart else "تاریخ نامشخص"
     }
 }
