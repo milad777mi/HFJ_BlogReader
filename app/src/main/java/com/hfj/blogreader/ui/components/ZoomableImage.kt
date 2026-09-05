@@ -24,12 +24,10 @@ fun ZoomableImage(
     Box(
         modifier = modifier
             .pointerInput(Unit) {
-                detectTransformGestures { _, centroid, pan, zoom, _ ->
-                    // اعمال بزرگنمایی با محدودیت 0.5 تا 3 برابر
+                detectTransformGestures { _, pan, zoom, _ ->
+                    // ✅ اصلاح: ۴ پارامتر (centroid, pan, zoom, rotation)
                     scale = (scale * zoom).coerceIn(0.5f, 3f)
-                    // محاسبه جابه‌جایی بر اساس مقیاس جدید
                     offset += pan
-                    // محدود کردن جابه‌جایی به اندازه‌ی تصویر (اختیاری)
                 }
             }
             .graphicsLayer {
