@@ -95,6 +95,9 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.3.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.3.1")
 
+    // ✅ کتابخانه‌ی بزرگنمایی عکس (پینچ و زوم)
+    implementation("com.github.MrNouri:zoomable-compose:1.1.0")
+
     // SharedPreferences
     implementation("androidx.preference:preference-ktx:1.2.1")
 
