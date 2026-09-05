@@ -31,7 +31,7 @@ fun HomeScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val fontScale = LocalFontScale.current
 
-    // ✅ بارگذاری آمار هنگام ورود به برنامه (در پس‌زمینه، بدون نمایش در این صفحه)
+    // ✅ بارگذاری آمار هنگام ورود به برنامه (در پس‌زمینه)
     LaunchedEffect(Unit) {
         viewModel.loadStats(context)
     }
