@@ -17,7 +17,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,7 +27,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 
@@ -44,8 +42,6 @@ fun PostDetailScreen(
     val post = posts.find { it.id == postId }
     val fontScale = LocalFontScale.current
 
-    var showZoomDialog by remember { mutableStateOf(false) }
-    var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var showFullscreenVideo by remember { mutableStateOf(false) }
 
     if (post == null) {
@@ -83,7 +79,7 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
-            // ========== فیلم با ExoPlayer ==========
+            // ========== فقط فیلم (در صورت وجود) ==========
             if (post.videoUrl != null) {
                 val exoPlayer = remember {
                     ExoPlayer.Builder(context).build().apply {
@@ -99,13 +95,10 @@ fun PostDetailScreen(
                     }
                 }
 
-                // ✅ وقتی دیالوگ بزرگنمایی باز می‌شود، پلیر اصلی مکث کند
+                // مکث پلیر هنگام باز شدن دیالوگ تمام‌صفحه
                 LaunchedEffect(showFullscreenVideo) {
                     if (showFullscreenVideo) {
                         exoPlayer.pause()
-                    } else {
-                        // وقتی دیالوگ بسته شد، اگر قبلاً در حال پخش بود، ادامه دهد
-                        // (وضعیت قبلی را ذخیره می‌کنیم)
                     }
                 }
 
@@ -132,24 +125,7 @@ fun PostDetailScreen(
                 )
             }
 
-            // ========== تصاویر با بزرگنمایی ==========
-            if (post.imageUrls.isNotEmpty()) {
-                post.imageUrls.forEach { url ->
-                    AsyncImage(
-                        model = url,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(250.dp)
-                            .padding(bottom = 12.dp)
-                            .clickable {
-                                zoomImageUrl = url
-                                showZoomDialog = true
-                            },
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
+            // ========== ❌ عکس حذف شد (فقط در کارت نمایش داده می‌شود) ==========
 
             // ========== محتوا ==========
             Card(
@@ -185,7 +161,7 @@ fun PostDetailScreen(
                     Divider()
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // ✅ تاریخ بدون عبارت اضافی
+                    // تاریخ (بدون "ساعت")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -197,36 +173,12 @@ fun PostDetailScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            post.date,  // ← فقط تاریخ، بدون "نوشته شده در"
+                            post.date,
                             fontSize = 13.sp * fontScale,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     }
                 }
-            }
-        }
-    }
-
-    // ========== دیالوگ بزرگنمایی تصویر ==========
-    if (showZoomDialog && zoomImageUrl != null) {
-        Dialog(
-            onDismissRequest = { showZoomDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.9f))
-                    .clickable { showZoomDialog = false }
-            ) {
-                AsyncImage(
-                    model = zoomImageUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentScale = ContentScale.Fit
-                )
             }
         }
     }
@@ -237,7 +189,7 @@ fun PostDetailScreen(
             ExoPlayer.Builder(context).build().apply {
                 setMediaItem(MediaItem.fromUri(Uri.parse(post.videoUrl)))
                 prepare()
-                playWhenReady = true  // ✅ خودکار پخش شود
+                playWhenReady = true
             }
         }
 
