@@ -8,9 +8,10 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState   // ✅ اصلاح شده
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -24,10 +25,16 @@ fun HomeScreen(
     viewModel: MainViewModel,
     navController: NavController
 ) {
+    val context = LocalContext.current
     val posts by viewModel.filteredPosts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val fontScale = LocalFontScale.current
+
+    // ✅ بارگذاری آمار هنگام ورود به برنامه (در پس‌زمینه، بدون نمایش در این صفحه)
+    LaunchedEffect(Unit) {
+        viewModel.loadStats(context)
+    }
 
     Scaffold(
         topBar = {
