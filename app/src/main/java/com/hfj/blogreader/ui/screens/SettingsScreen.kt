@@ -5,7 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -24,10 +25,6 @@ fun SettingsScreen(
 ) {
     val fontScale by viewModel.fontScale.collectAsState()
     val stats by viewModel.stats.collectAsState()
-
-    LaunchedEffect(Unit) {
-        viewModel.loadStats(context)
-    }
 
     Scaffold(
         topBar = {
@@ -53,7 +50,7 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ---------- کارت آمار ----------
+            // ========== کارت آمار (فقط نمایش) ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -84,7 +81,7 @@ fun SettingsScreen(
                 }
             }
 
-            // ---------- کارت حجم الخط ----------
+            // ========== کارت حجم الخط ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -173,7 +170,7 @@ fun SettingsScreen(
                 }
             }
 
-            // ---------- کارت حول التطبيق ----------
+            // ========== کارت حول التطبيق ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -197,7 +194,7 @@ fun SettingsScreen(
                 }
             }
 
-            // ---------- دکمه بارگذاری مجدد ----------
+            // ========== دکمه بارگذاری مجدد مطالب ==========
             Button(
                 onClick = { viewModel.fetchAllPosts() },
                 modifier = Modifier.fillMaxWidth()
@@ -215,6 +212,10 @@ fun StatRow(label: String, value: String, fontScale: Float) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, fontSize = 14.sp * fontScale)
-        Text(value, fontSize = 14.sp * fontScale, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+        Text(
+            text = if (value == "0") "0" else value,
+            fontSize = 14.sp * fontScale,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+        )
     }
 }
