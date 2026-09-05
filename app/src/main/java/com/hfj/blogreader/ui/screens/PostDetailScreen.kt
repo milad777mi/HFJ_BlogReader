@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,11 +32,13 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
-import coil.compose.AsyncImage   // ✅ این خط را اضافه کنید
+import coil.compose.AsyncImage
 import com.hfj.blogreader.ui.components.ZoomableImage
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 import com.hfj.blogreader.utils.UserManager
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,8 +62,17 @@ fun PostDetailScreen(
     val isLiked = likedStatus[postId] ?: false
     val likeCount = likes[postId] ?: 0
 
+    // ✅ نظرات
+    val commentList = viewModel.comments.value[postId] ?: emptyList()
+
+    // حالت‌های فرم نظر
+    var commentText by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var submitMessage by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(postId) {
         viewModel.loadLikeStatus(postId, userId)
+        viewModel.loadComments(postId)
     }
 
     if (post == null) {
@@ -235,6 +247,176 @@ fun PostDetailScreen(
                                 color = if (isLiked) Color.Red else Color.Gray,
                                 fontWeight = FontWeight.Bold
                             )
+                        }
+                    }
+                }
+            }
+
+            // ========== 💬 بخش نظرات ==========
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp)
+            ) {
+                // عنوان نظرات
+                Text(
+                    text = "💬 التعليقات (${commentList.size})",
+                    fontSize = 17.sp * fontScale,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // لیست نظرات
+                if (commentList.isEmpty()) {
+                    Text(
+                        text = "لا توجد تعليقات حتى الآن",
+                        fontSize = 14.sp * fontScale,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                } else {
+                    commentList.forEach { comment ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = comment.userName,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp * fontScale
+                                    )
+                                    Text(
+                                        text = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.US)
+                                            .format(Date(comment.timestamp)),
+                                        fontSize = 11.sp * fontScale,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = comment.text,
+                                    fontSize = 15.sp * fontScale,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ========== فرم ثبت نظر ==========
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        // پیام وضعیت
+                        if (submitMessage != null) {
+                            Text(
+                                text = submitMessage!!,
+                                fontSize = 13.sp * fontScale,
+                                color = if (submitMessage!!.contains("✅")) Color.Green else Color.Red,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                        }
+
+                        // فیلد ورودی نظر
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = commentText,
+                                onValueChange = { 
+                                    if (it.length <= 33) commentText = it 
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp),
+                                placeholder = { 
+                                    Text(
+                                        "اكتب تعليقك (حد 33 حرف)",
+                                        fontSize = 13.sp * fontScale
+                                    ) 
+                                },
+                                maxLines = 2,
+                                enabled = !isSubmitting,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                            )
+
+                            IconButton(
+                                onClick = {
+                                    if (commentText.isNotBlank() && !isSubmitting) {
+                                        isSubmitting = true
+                                        submitMessage = null
+                                        viewModel.submitComment(
+                                            postId,
+                                            userId,
+                                            "مستخدم",
+                                            commentText.trim()
+                                        )
+                                        // پیام موقت
+                                        submitMessage = "✅ تم إرسال تعليقك للمراجعة"
+                                        commentText = ""
+                                        isSubmitting = false
+                                        // بارگذاری مجدد نظرات بعد از چند ثانیه
+                                        // (در عمل، نظرات بعد از تایید نمایش داده می‌شوند)
+                                    }
+                                },
+                                enabled = commentText.isNotBlank() && !isSubmitting
+                            ) {
+                                Icon(
+                                    Icons.Default.Send,
+                                    contentDescription = "إرسال",
+                                    tint = if (commentText.isNotBlank() && !isSubmitting)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                            }
+                        }
+
+                        // شمارنده کاراکترها
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Text(
+                                text = "${commentText.length}/33",
+                                fontSize = 11.sp * fontScale,
+                                color = if (commentText.length > 33) Color.Red else Color.Gray
+                            )
+                        }
+
+                        // دکمه بروزرسانی نظرات (دستی)
+                        TextButton(
+                            onClick = { viewModel.loadComments(postId) },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("🔄 تحديث التعليقات", fontSize = 12.sp * fontScale)
                         }
                     }
                 }
