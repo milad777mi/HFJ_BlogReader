@@ -1,7 +1,6 @@
 package com.hfj.blogreader.utils
 
 import android.content.Context
-import android.os.Environment
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.CompletableDeferred
@@ -10,11 +9,6 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
-import java.io.File
-import java.io.FileWriter
-import java.io.PrintWriter
-import java.text.SimpleDateFormat
-import java.util.*
 
 data class BlogStats(
     val today: String = "0",
@@ -30,22 +24,42 @@ object StatFetcher {
         val deferred = CompletableDeferred<BlogStats>()
         val webView = WebView(context)
 
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
+        // ✅ تنظیمات WebView برای بارگذاری کامل صفحه
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            loadWithOverviewMode = true
+            useWideViewPort = true
+            // ✅ User-Agent واقعی (مثل مرورگر Chrome)
+            userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            // ✅ کش را غیرفعال کن تا صفحه تازه دریافت شود
+            cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
+        }
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
-                // ⏳ صبر ۳ ثانیه برای اجرای کامل جاوااسکریپت
+                // ⏳ ۴ ثانیه صبر برای اجرای کامل جاوااسکریپت
                 view?.postDelayed({
 
                     val jsCode = """
                         (function() {
                             var text = document.body.innerText;
                             text = text.replace(/\s+/g, ' ');
+
+                            function extract(keyword) {
+                                var regex = new RegExp(keyword + '\\s*[:]?\\s*(\\d+)');
+                                var match = text.match(regex);
+                                return match ? match[1] : '0';
+                            }
+
                             return JSON.stringify({
-                                fullText: text
+                                today: extract('بازديد امروز'),
+                                yesterday: extract('بازديد دیروز'),
+                                weekly: extract('بازديد هفتگی'),
+                                monthly: extract('بازديد ماهانه'),
+                                total: extract('بازديد كل')
                             });
                         })();
                     """.trimIndent()
@@ -54,33 +68,20 @@ object StatFetcher {
                         val cleanJson = resultJson.trim().trim('"').replace("\\", "")
                         try {
                             val jsonObject = JSONObject(cleanJson)
-                            val fullText = jsonObject.optString("fullText", "")
-
-                            // ✅ ذخیره متن کامل در پوشه Downloads برای دیباگ
-                            saveDebugText(fullText)
-
-                            // استخراج اعداد
-                            val today = extractNumber(fullText, "بازديد امروز")
-                            val yesterday = extractNumber(fullText, "بازديد دیروز")
-                            val weekly = extractNumber(fullText, "بازديد هفتگی")
-                            val monthly = extractNumber(fullText, "بازديد ماهانه")
-                            val total = extractNumber(fullText, "بازديد كل")
-
                             val stats = BlogStats(
-                                today = today,
-                                yesterday = yesterday,
-                                weekly = weekly,
-                                monthly = monthly,
-                                total = total
+                                today = jsonObject.optString("today", "0"),
+                                yesterday = jsonObject.optString("yesterday", "0"),
+                                weekly = jsonObject.optString("weekly", "0"),
+                                monthly = jsonObject.optString("monthly", "0"),
+                                total = jsonObject.optString("total", "0")
                             )
                             deferred.complete(stats)
                         } catch (e: Exception) {
-                            saveDebugText("❌ خطا در پردازش JSON: ${e.message}")
                             deferred.complete(BlogStats())
                         }
                         view?.destroy()
                     }
-                }, 3000) // ⏳ ۳ ثانیه صبر
+                }, 4000) // ⏳ ۴ ثانیه صبر
             }
 
             override fun onReceivedError(
@@ -90,57 +91,23 @@ object StatFetcher {
                 failingUrl: String?
             ) {
                 super.onReceivedError(view, errorCode, description, failingUrl)
-                saveDebugText("❌ خطا در بارگذاری صفحه: $errorCode - $description")
                 deferred.complete(BlogStats())
                 view?.destroy()
             }
         }
 
         try {
-            withTimeout(25000L) {
+            // ✅ تایم‌اوت ۴۰ ثانیه (چون اسکریپت خارجی ممکن است کند باشد)
+            withTimeout(40000L) {
                 webView.loadUrl("https://hfgapi77777.blogfa.com/")
                 deferred.await()
             }
         } catch (e: TimeoutCancellationException) {
-            saveDebugText("❌ تایم‌اوت ۲۵ ثانیه‌ای")
             webView.destroy()
             BlogStats()
         } catch (e: Exception) {
-            saveDebugText("❌ خطای کلی: ${e.message}")
             webView.destroy()
             BlogStats()
-        }
-    }
-
-    private fun extractNumber(text: String, keyword: String): String {
-        val pattern = Regex("""$keyword\s*[:]?\s*(\d+)""")
-        val match = pattern.find(text)
-        return match?.groupValues?.get(1) ?: "0"
-    }
-
-    // ✅ ذخیره‌سازی در پوشه Downloads
-    private fun saveDebugText(text: String) {
-        try {
-            val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (!directory.exists()) {
-                directory.mkdirs()
-            }
-            val file = File(directory, "debug_stats.txt")
-            val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-            val fullText = """
-                =======================================
-                زمان: $time
-                =======================================
-                $text
-                =======================================
-            """.trimIndent()
-            FileWriter(file, false).use { writer ->
-                PrintWriter(writer).use { printWriter ->
-                    printWriter.println(fullText)
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 }
