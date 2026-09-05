@@ -50,7 +50,7 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ========== کارت آمار (فقط نمایش) ==========
+            // ========== کارت آمار ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -66,9 +66,6 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     StatRow("اليوم", stats.today, fontScale)
-                    StatRow("أمس", stats.yesterday, fontScale)
-                    StatRow("هذا الأسبوع", stats.weekly, fontScale)
-                    StatRow("هذا الشهر", stats.monthly, fontScale)
                     StatRow("الإجمالي", stats.total, fontScale)
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -213,7 +210,7 @@ fun StatRow(label: String, value: String, fontScale: Float) {
     ) {
         Text(label, fontSize = 14.sp * fontScale)
         Text(
-            text = if (value == "0") "0" else value,
+            text = value,
             fontSize = 14.sp * fontScale,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
         )
