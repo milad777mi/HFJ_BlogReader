@@ -9,6 +9,7 @@ import com.hfj.blogreader.data.repository.BlogRepository
 import com.hfj.blogreader.utils.FontSizeManager
 import com.hfj.blogreader.utils.BlogStats
 import com.hfj.blogreader.utils.StatFetcher
+import com.hfj.blogreader.utils.LikeManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -42,6 +43,13 @@ class MainViewModel(
     private val _stats = MutableStateFlow(BlogStats())
     val stats: StateFlow<BlogStats> = _stats
 
+    // ---------- Likes ----------
+    private val _likes = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val likes: StateFlow<Map<String, Int>> = _likes
+
+    private val _likedStatus = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val likedStatus: StateFlow<Map<String, Boolean>> = _likedStatus
+
     // ---------- Functions ----------
 
     fun fetchAllPosts() {
@@ -63,7 +71,7 @@ class MainViewModel(
         }
     }
 
-    // ✅ افزایش آمار هنگام ورود به برنامه (خودکار)
+    // ✅ آمار
     fun incrementStats(context: Context) {
         viewModelScope.launch {
             try {
@@ -75,12 +83,47 @@ class MainViewModel(
         }
     }
 
-    // ✅ دریافت آمار (دستی)
     fun loadStats(context: Context) {
         viewModelScope.launch {
             try {
                 val result = StatFetcher.fetchStatsOnly()
                 _stats.value = result
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ✅ لایک
+    fun getLikeCount(postId: String): Int {
+        return _likes.value[postId] ?: 0
+    }
+
+    fun isLiked(postId: String): Boolean {
+        return _likedStatus.value[postId] ?: false
+    }
+
+    fun toggleLike(postId: String, userId: String) {
+        viewModelScope.launch {
+            try {
+                val newCount = LikeManager.likePost(postId, userId)
+                if (newCount > 0) {
+                    _likes.value = _likes.value + (postId to newCount)
+                    _likedStatus.value = _likedStatus.value + (postId to true)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun loadLikeStatus(postId: String, userId: String) {
+        viewModelScope.launch {
+            try {
+                val liked = LikeManager.getLikeStatus(postId, userId)
+                val count = LikeManager.getLikeCount(postId)
+                _likedStatus.value = _likedStatus.value + (postId to liked)
+                _likes.value = _likes.value + (postId to count)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
