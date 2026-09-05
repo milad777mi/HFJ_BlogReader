@@ -31,8 +31,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
-import com.github.mrnouri.zoomable.zoomable   // ✅ import برای بزرگنمایی
+import com.hfj.blogreader.ui.components.ZoomableImage
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 import com.hfj.blogreader.utils.UserManager
@@ -293,7 +292,7 @@ fun PostDetailScreen(
         }
     }
 
-    // ========== دیالوگ بزرگنمایی تصویر با قابلیت پینچ و زوم ==========
+    // ========== دیالوگ بزرگنمایی تصویر با پینچ و زوم (سفارشی) ==========
     if (zoomImageUrl != null) {
         Dialog(
             onDismissRequest = { zoomImageUrl = null },
@@ -305,13 +304,12 @@ fun PostDetailScreen(
                     .background(Color.Black.copy(alpha = 0.9f))
                     .clickable { zoomImageUrl = null }  // کلیک برای بستن
             ) {
-                AsyncImage(
+                ZoomableImage(
                     model = zoomImageUrl,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
-                        .zoomable(),  // ✅ بزرگنمایی با دو انگشت
+                        .padding(16.dp),
                     contentScale = ContentScale.Fit
                 )
             }
