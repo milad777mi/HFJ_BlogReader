@@ -62,7 +62,7 @@ fun PostDetailScreen(
     val isLiked = likedStatus[postId] ?: false
     val likeCount = likes[postId] ?: 0
 
-    // ✅ نظرات
+    // نظرات
     val commentList = viewModel.comments.value[postId] ?: emptyList()
 
     // حالت‌های فرم نظر
@@ -348,14 +348,14 @@ fun PostDetailScreen(
                             OutlinedTextField(
                                 value = commentText,
                                 onValueChange = { 
-                                    if (it.length <= 33) commentText = it 
+                                    if (it.length <= 66) commentText = it 
                                 },
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(end = 8.dp),
                                 placeholder = { 
                                     Text(
-                                        "اكتب تعليقك (حد 33 حرف)",
+                                        "اكتب اسمك و تعليقك (حد 66 حرف)",
                                         fontSize = 13.sp * fontScale
                                     ) 
                                 },
@@ -378,12 +378,9 @@ fun PostDetailScreen(
                                             "مستخدم",
                                             commentText.trim()
                                         )
-                                        // پیام موقت
                                         submitMessage = "✅ تم إرسال تعليقك للمراجعة"
                                         commentText = ""
                                         isSubmitting = false
-                                        // بارگذاری مجدد نظرات بعد از چند ثانیه
-                                        // (در عمل، نظرات بعد از تایید نمایش داده می‌شوند)
                                     }
                                 },
                                 enabled = commentText.isNotBlank() && !isSubmitting
@@ -405,19 +402,25 @@ fun PostDetailScreen(
                             horizontalArrangement = Arrangement.End
                         ) {
                             Text(
-                                text = "${commentText.length}/33",
+                                text = "${commentText.length}/66",
                                 fontSize = 11.sp * fontScale,
-                                color = if (commentText.length > 33) Color.Red else Color.Gray
+                                color = if (commentText.length > 66) Color.Red else Color.Gray
                             )
                         }
 
-                        // دکمه بروزرسانی نظرات (دستی)
-                        TextButton(
-                            onClick = { viewModel.loadComments(postId) },
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Text("🔄 تحديث التعليقات", fontSize = 12.sp * fontScale)
-                        }
+                        // ✅ متن راهنما (جایگزین دکمه تحديث)
+                        Text(
+                            text = """
+                                في كل يوم يمكنك تقديم تعليق واحد لكل مشاركة.
+                                الحد الأقصى 5 تعليقات يومياً للمستخدم الواحد.
+                                التعليقات تظهر بعد الموافقة عليها.
+                                التعليقات التي تتجاوز الحد المسموح لا يتم تسجيلها أو عرضها.
+                            """.trimIndent(),
+                            fontSize = 11.sp * fontScale,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            lineHeight = 16.sp,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
                     }
                 }
             }
