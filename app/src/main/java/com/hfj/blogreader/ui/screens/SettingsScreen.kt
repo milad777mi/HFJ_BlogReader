@@ -179,7 +179,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = """
-                            made by: mms.net. bnm. J.
+                            made by: mms.net. bnm. J
                             telegram: mmsnetbnm
                             telegram: mmsnetbnmbot
 
