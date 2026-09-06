@@ -50,7 +50,7 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ========== کارت آمار ==========
+            // ========== کارت آمار (بدون دکمه رفرش) ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -68,13 +68,7 @@ fun SettingsScreen(
                     StatRow("اليوم", stats.today, fontScale)
                     StatRow("الإجمالي", stats.total, fontScale)
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { viewModel.loadStats(context) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("🔄 تحديث الإحصائيات")
-                    }
+                    // ❌ دکمه "تحديث الإحصائيات" حذف شد
                 }
             }
 
@@ -167,7 +161,7 @@ fun SettingsScreen(
                 }
             }
 
-            // ========== کارت حول التطبيق ==========
+            // ========== کارت حول (به‌روزرسانی‌شده) ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -178,15 +172,24 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        "📱 حول التطبيق",
+                        "📱 حول",
                         fontSize = 16.sp * fontScale,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "قارئ مدونة حسين فاضل الجنامي\nالإصدار 1.0.0",
+                        text = """
+                            made by: mms.net. bnm. J.
+                            telegram: mmsnetbnm
+                            telegram: mmsnetbnmbot
+
+                            مدونة حسين فاضل الجنامي
+
+                            1.0.0
+                        """.trimIndent(),
                         fontSize = 13.sp * fontScale,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        lineHeight = 20.sp
                     )
                 }
             }
