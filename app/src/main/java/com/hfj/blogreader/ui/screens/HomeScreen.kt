@@ -41,7 +41,7 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "📚 قارئ المدونة",
+                        "📚 المدونة",  // ✅ تغییر نام
                         fontSize = 22.sp * fontScale,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
