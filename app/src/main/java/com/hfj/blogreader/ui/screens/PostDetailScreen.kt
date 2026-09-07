@@ -71,14 +71,22 @@ fun PostDetailScreen(
     var isSubmitting by remember { mutableStateOf(false) }
     var submitMessage by remember { mutableStateOf<String?>(null) }
 
-    // ✅ محدودیت‌های نظرات
-    val canCommentDaily = CommentLimiter.canComment(context)
-    val canCommentOnPost = CommentLimiter.canCommentOnPost(context, postId)
-    val remainingComments = CommentLimiter.getRemainingComments(context)
+    // ✅ محدودیت‌ها به‌صورت State (برای به‌روزرسانی خودکار UI)
+    var canCommentDaily by remember { mutableStateOf(CommentLimiter.canComment(context)) }
+    var canCommentOnPost by remember { mutableStateOf(CommentLimiter.canCommentOnPost(context, postId)) }
+    var remainingComments by remember { mutableStateOf(CommentLimiter.getRemainingComments(context)) }
+
+    // ✅ تابع به‌روزرسانی محدودیت‌ها
+    fun updateLimits() {
+        canCommentDaily = CommentLimiter.canComment(context)
+        canCommentOnPost = CommentLimiter.canCommentOnPost(context, postId)
+        remainingComments = CommentLimiter.getRemainingComments(context)
+    }
 
     LaunchedEffect(postId) {
         viewModel.loadLikeStatus(postId, userId)
         viewModel.loadComments(postId)
+        updateLimits()
     }
 
     if (post == null) {
@@ -413,6 +421,9 @@ fun PostDetailScreen(
                                         submitMessage = "✅ تم إرسال تعليقك للمراجعة"
                                         commentText = ""
                                         isSubmitting = false
+
+                                        // ✅ به‌روزرسانی محدودیت‌ها
+                                        updateLimits()
                                     }
                                 },
                                 enabled = commentText.isNotBlank() && !isSubmitting && canCommentDaily && canCommentOnPost
