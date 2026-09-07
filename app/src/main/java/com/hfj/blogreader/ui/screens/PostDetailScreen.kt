@@ -37,6 +37,7 @@ import com.hfj.blogreader.ui.components.ZoomableImage
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 import com.hfj.blogreader.utils.UserManager
+import com.hfj.blogreader.utils.CommentLimiter
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -69,6 +70,11 @@ fun PostDetailScreen(
     var commentText by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
     var submitMessage by remember { mutableStateOf<String?>(null) }
+
+    // ✅ محدودیت‌های نظرات
+    val canCommentDaily = CommentLimiter.canComment(context)
+    val canCommentOnPost = CommentLimiter.canCommentOnPost(context, postId)
+    val remainingComments = CommentLimiter.getRemainingComments(context)
 
     LaunchedEffect(postId) {
         viewModel.loadLikeStatus(postId, userId)
@@ -340,6 +346,16 @@ fun PostDetailScreen(
                             )
                         }
 
+                        // ✅ نمایش تعداد نظرات باقی‌مانده
+                        if (remainingComments > 0) {
+                            Text(
+                                text = "✔️ التعليقات المتبقية اليوم: $remainingComments",
+                                fontSize = 11.sp * fontScale,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                        }
+
                         // فیلد ورودی نظر
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -370,6 +386,20 @@ fun PostDetailScreen(
                             IconButton(
                                 onClick = {
                                     if (commentText.isNotBlank() && !isSubmitting) {
+                                        // ✅ بررسی محدودیت روزانه
+                                        if (!canCommentDaily) {
+                                            val timeText = CommentLimiter.formatRemainingTime(CommentLimiter.getRemainingTime(context))
+                                            submitMessage = "⚠️ لقد وصلت إلى الحد الأقصى (5 تعليقات في 24 ساعة). يمكنك التعليق مرة أخرى بعد $timeText."
+                                            return@IconButton
+                                        }
+
+                                        // ✅ بررسی محدودیت هر مطلب
+                                        if (!canCommentOnPost) {
+                                            submitMessage = "⚠️ يمكنك التعليق مرة واحدة فقط لكل مشاركة في 24 ساعة."
+                                            return@IconButton
+                                        }
+
+                                        // ارسال نظر
                                         isSubmitting = true
                                         submitMessage = null
                                         viewModel.submitComment(
@@ -378,17 +408,19 @@ fun PostDetailScreen(
                                             "مستخدم",
                                             commentText.trim()
                                         )
+                                        // ✅ ثبت نظر در محدودیت‌ها
+                                        CommentLimiter.registerComment(context, postId)
                                         submitMessage = "✅ تم إرسال تعليقك للمراجعة"
                                         commentText = ""
                                         isSubmitting = false
                                     }
                                 },
-                                enabled = commentText.isNotBlank() && !isSubmitting
+                                enabled = commentText.isNotBlank() && !isSubmitting && canCommentDaily && canCommentOnPost
                             ) {
                                 Icon(
                                     Icons.Default.Send,
                                     contentDescription = "إرسال",
-                                    tint = if (commentText.isNotBlank() && !isSubmitting)
+                                    tint = if (commentText.isNotBlank() && !isSubmitting && canCommentDaily && canCommentOnPost)
                                         MaterialTheme.colorScheme.primary
                                     else
                                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
