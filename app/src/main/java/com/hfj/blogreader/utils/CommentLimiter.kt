@@ -11,7 +11,7 @@ object CommentLimiter {
 
     // محدودیت‌ها
     private const val MAX_COMMENTS_PER_DAY = 5
-    private const val TIME_LIMIT_HOURS = 24
+    private val TIME_LIMIT_MS = TimeUnit.HOURS.toMillis(24)  // ✅ تغییر به Long
 
     fun canComment(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -19,7 +19,7 @@ object CommentLimiter {
         val firstTime = prefs.getLong(KEY_FIRST_COMMENT_TIME, 0)
         val now = System.currentTimeMillis()
 
-        if (firstTime > 0 && now - firstTime > TimeUnit.HOURS.toMillis(TIME_LIMIT_HOURS)) {
+        if (firstTime > 0 && now - firstTime > TIME_LIMIT_MS) {  // ✅ استفاده از Long
             reset(context)
             return true
         }
@@ -33,7 +33,7 @@ object CommentLimiter {
         val lastCommentTime = prefs.getLong(key, 0)
         val now = System.currentTimeMillis()
 
-        return now - lastCommentTime > TimeUnit.HOURS.toMillis(TIME_LIMIT_HOURS)
+        return now - lastCommentTime > TIME_LIMIT_MS  // ✅ استفاده از Long
     }
 
     fun registerComment(context: Context, postId: String) {
@@ -58,7 +58,7 @@ object CommentLimiter {
         val firstTime = prefs.getLong(KEY_FIRST_COMMENT_TIME, 0)
         val now = System.currentTimeMillis()
 
-        if (firstTime > 0 && now - firstTime > TimeUnit.HOURS.toMillis(TIME_LIMIT_HOURS)) {
+        if (firstTime > 0 && now - firstTime > TIME_LIMIT_MS) {  // ✅ استفاده از Long
             reset(context)
             return MAX_COMMENTS_PER_DAY
         }
@@ -73,7 +73,7 @@ object CommentLimiter {
 
         if (firstTime == 0L) return 0L
         val elapsed = now - firstTime
-        val remaining = TimeUnit.HOURS.toMillis(TIME_LIMIT_HOURS) - elapsed
+        val remaining = TIME_LIMIT_MS - elapsed  // ✅ استفاده از Long
         return remaining.coerceAtLeast(0)
     }
 
