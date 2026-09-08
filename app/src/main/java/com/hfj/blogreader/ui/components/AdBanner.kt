@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -20,7 +21,6 @@ fun AdBanner(
     adData: AdData?,
     onAdClick: (String) -> Unit
 ) {
-    // ✅ فقط وجود imageUrl را بررسی کن (بدون نیاز به exists)
     if (adData == null || adData.imageUrl.isNullOrEmpty()) return
 
     val fontScale = LocalFontScale.current
@@ -48,7 +48,8 @@ fun AdBanner(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                contentScale = ContentScale.FillBounds
+                contentScale = ContentScale.FillBounds,
+                imageLoader = LocalContext.current.imageLoader  // ✅ پشتیبانی از GIF
             )
             if (!adData.title.isNullOrEmpty()) {
                 Text(
