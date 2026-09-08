@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -39,14 +40,31 @@ fun HomeScreen(
     val adData by viewModel.adData.collectAsState()
     val eitaaPost by viewModel.eitaaPost.collectAsState()
 
-    // ✅ کپی محلی برای Smart cast
+    // کپی محلی برای Smart cast
     val ad = adData
     val eitaa = eitaaPost
 
-    // ✅ بارگذاری خودکار هنگام ورود
+    var showAdDialog by remember { mutableStateOf(false) }
+    var showEitaaDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
+        Log.d("HomeScreen", "🔄 شروع بارگذاری")
         viewModel.loadAdData()
         viewModel.loadEitaaPost()
+    }
+
+    LaunchedEffect(ad) {
+        if (ad != null && !ad.imageUrl.isNullOrEmpty()) {
+            Log.d("HomeScreen", "✅ تبلیغات دریافت شد، نمایش پاپ‌آپ")
+            showAdDialog = true
+        }
+    }
+
+    LaunchedEffect(eitaa) {
+        if (eitaa != null && !eitaa.text.isNullOrBlank()) {
+            Log.d("HomeScreen", "✅ ایتا دریافت شد، نمایش پاپ‌آپ")
+            showEitaaDialog = true
+        }
     }
 
     fun openLink(link: String) {
@@ -80,88 +98,140 @@ fun HomeScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when {
-                isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("جاري التحميل...")
+            // محتوای اصلی
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator()
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("جاري التحميل...")
+                            }
                         }
                     }
-                }
-                errorMessage != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    errorMessage != null -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "❌ $errorMessage",
+                                    fontSize = 16.sp * fontScale,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(onClick = { viewModel.fetchAllPosts() }) {
+                                    Text("🔄 إعادة المحاولة")
+                                }
+                            }
+                        }
+                    }
+                    posts.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                "❌ $errorMessage",
+                                "لا توجد مشاركات",
                                 fontSize = 16.sp * fontScale,
-                                color = MaterialTheme.colorScheme.error
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = { viewModel.fetchAllPosts() }) {
-                                Text("🔄 إعادة المحاولة")
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            items(
+                                items = posts,
+                                key = { post -> post.id }
+                            ) { post ->
+                                PostCard(
+                                    post = post,
+                                    onCardClick = { navController.navigate("post/${post.id}") }
+                                )
                             }
                         }
                     }
                 }
-                posts.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+            }
+
+            // پاپ‌آپ تبلیغات
+            if (showAdDialog && ad != null) {
+                Dialog(
+                    onDismissRequest = { showAdDialog = false }
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        shape = MaterialTheme.shapes.medium
                     ) {
-                        Text(
-                            "لا توجد مشاركات",
-                            fontSize = 16.sp * fontScale,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                IconButton(onClick = { showAdDialog = false }) {
+                                    Icon(Icons.Default.Close, contentDescription = "بستن")
+                                }
+                            }
+                            AdBanner(
+                                adData = ad,
+                                onAdClick = { link -> openLink(link) }
+                            )
+                        }
                     }
                 }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+            }
+
+            // پاپ‌آپ ایتا
+            if (showEitaaDialog && eitaa != null) {
+                Dialog(
+                    onDismissRequest = { showEitaaDialog = false }
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        shape = MaterialTheme.shapes.medium
                     ) {
-                        // ✅ کارت تبلیغاتی (با کپی محلی ad)
-                        if (ad != null && !ad.imageUrl.isNullOrEmpty()) {
-                            item(key = "ad_banner") {
-                                AdBanner(
-                                    adData = ad,
-                                    onAdClick = { link -> openLink(link) }
-                                )
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                IconButton(onClick = { showEitaaDialog = false }) {
+                                    Icon(Icons.Default.Close, contentDescription = "بستن")
+                                }
                             }
-                        }
-
-                        // ✅ کارت ایتا (با کپی محلی eitaa)
-                        if (eitaa != null && !eitaa.text.isNullOrBlank()) {
-                            item(key = "eitaa_banner") {
-                                EitaaBanner(
-                                    eitaaPost = eitaa,
-                                    onLinkClick = { link -> openLink(link) }
-                                )
-                            }
-                        }
-
-                        // ✅ لیست مطالب
-                        items(
-                            items = posts,
-                            key = { post -> post.id }
-                        ) { post ->
-                            PostCard(
-                                post = post,
-                                onCardClick = { navController.navigate("post/${post.id}") }
+                            EitaaBanner(
+                                eitaaPost = eitaa,
+                                onLinkClick = { link -> openLink(link) }
                             )
                         }
                     }
