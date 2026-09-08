@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.compose.LocalImageLoader  // ✅ پشتیبانی از GIF
 import com.hfj.blogreader.ui.components.PostCard
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
@@ -121,7 +122,7 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // ✅ کارت تبلیغاتی
+                        // کارت تبلیغاتی
                         if (ad != null && !ad.imageUrl.isNullOrEmpty()) {
                             item {
                                 Card(
@@ -145,7 +146,7 @@ fun HomeScreen(
                                                 .height(50.dp)
                                                 .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
                                             contentScale = ContentScale.FillBounds,
-                                            imageLoader = LocalContext.current.imageLoader  // ✅ پشتیبانی از GIF
+                                            imageLoader = LocalImageLoader.current  // ✅ پشتیبانی از GIF
                                         )
                                         if (!ad.title.isNullOrEmpty()) {
                                             Text(
@@ -169,7 +170,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // ✅ کارت ایتا
+                        // کارت ایتا
                         if (eitaa != null && !eitaa.text.isNullOrBlank()) {
                             item {
                                 Card(
@@ -205,7 +206,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // ✅ لیست مطالب
+                        // لیست مطالب
                         items(posts) { post ->
                             PostCard(
                                 post = post,
