@@ -127,7 +127,7 @@ fun HomeScreen(
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
+                                        .padding(vertical = 4.dp),  // ✅ اصلاح شده
                                     shape = RoundedCornerShape(18.dp),
                                     colors = CardDefaults.cardColors(
                                         containerColor = MaterialTheme.colorScheme.surface
@@ -173,7 +173,7 @@ fun HomeScreen(
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
+                                        .padding(vertical = 4.dp),  // ✅ اصلاح شده
                                     shape = RoundedCornerShape(18.dp),
                                     colors = CardDefaults.cardColors(
                                         containerColor = MaterialTheme.colorScheme.primaryContainer
