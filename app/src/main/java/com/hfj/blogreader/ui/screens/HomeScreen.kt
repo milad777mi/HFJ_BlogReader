@@ -1,5 +1,7 @@
 package com.hfj.blogreader.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.hfj.blogreader.ui.components.PostCard
+import com.hfj.blogreader.ui.components.AdBanner
+import com.hfj.blogreader.ui.components.EitaaBanner
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
 
@@ -31,17 +35,32 @@ fun HomeScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val fontScale = LocalFontScale.current
 
-    // ❌ این خط را حذف کنید (افزایش آمار به MainActivity منتقل شده است)
-    // LaunchedEffect(Unit) {
-    //     viewModel.incrementStats(context)
-    // }
+    // ✅ دریافت داده‌های کارت‌های تبلیغاتی
+    val adData by viewModel.adData.collectAsState()
+    val eitaaPost by viewModel.eitaaPost.collectAsState()
+
+    // ✅ بارگذاری کارت‌ها هنگام ورود به صفحه
+    LaunchedEffect(Unit) {
+        viewModel.loadAdData()
+        viewModel.loadEitaaPost()
+    }
+
+    // تابع باز کردن لینک در مرورگر
+    fun openLink(link: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // اگر لینک نامعتبر بود، کاری نکن
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "📚 المدونة",  // ✅ تغییر نام
+                        "📚 المدونة",
                         fontSize = 22.sp * fontScale,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
@@ -114,6 +133,27 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
+                        // ✅ کارت تبلیغاتی Worker (در صورت وجود)
+                        if (adData != null && adData.exists && !adData.imageUrl.isNullOrEmpty()) {
+                            item {
+                                AdBanner(
+                                    adData = adData,
+                                    onAdClick = { link -> openLink(link) }
+                                )
+                            }
+                        }
+
+                        // ✅ کارت ایتا (در صورت وجود)
+                        if (eitaaPost != null && eitaaPost.text.isNotBlank()) {
+                            item {
+                                EitaaBanner(
+                                    eitaaPost = eitaaPost,
+                                    onLinkClick = { link -> openLink(link) }
+                                )
+                            }
+                        }
+
+                        // ✅ لیست مطالب
                         items(posts) { post ->
                             PostCard(
                                 post = post,
