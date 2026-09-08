@@ -6,12 +6,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hfj.blogreader.data.models.Post
 import com.hfj.blogreader.data.models.Comment
+import com.hfj.blogreader.data.models.AdData
+import com.hfj.blogreader.data.models.EitaaPost
 import com.hfj.blogreader.data.repository.BlogRepository
 import com.hfj.blogreader.utils.FontSizeManager
 import com.hfj.blogreader.utils.BlogStats
 import com.hfj.blogreader.utils.StatFetcher
 import com.hfj.blogreader.utils.LikeManager
 import com.hfj.blogreader.utils.CommentManager
+import com.hfj.blogreader.utils.AdManager
+import com.hfj.blogreader.utils.EitaaApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -48,9 +52,17 @@ class MainViewModel(
     private val _likedStatus = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val likedStatus: StateFlow<Map<String, Boolean>> = _likedStatus
 
-    // ✅ Comments
+    // Comments
     private val _comments = MutableStateFlow<Map<String, List<Comment>>>(emptyMap())
     val comments: StateFlow<Map<String, List<Comment>>> = _comments
+
+    // ✅ Ads (کارت تبلیغاتی Worker)
+    private val _adData = MutableStateFlow<AdData?>(null)
+    val adData: StateFlow<AdData?> = _adData
+
+    // ✅ Eitaa (کارت ایتا)
+    private val _eitaaPost = MutableStateFlow<EitaaPost?>(null)
+    val eitaaPost: StateFlow<EitaaPost?> = _eitaaPost
 
     fun fetchAllPosts() {
         viewModelScope.launch {
@@ -135,7 +147,7 @@ class MainViewModel(
         }
     }
 
-    // ✅ Comment functions
+    // Comment functions
     fun loadComments(postId: String) {
         viewModelScope.launch {
             try {
@@ -154,10 +166,35 @@ class MainViewModel(
             try {
                 val success = CommentManager.submitComment(postId, userId, userName, text)
                 if (success) {
-                    // نظر برای تایید ارسال شد، می‌توانیم یک پیام موفقیت نمایش دهیم
-                    // اما نظرات بلافاصله نمایش داده نمی‌شوند تا تایید شوند
+                    // نظر برای تایید ارسال شد
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ✅ Ad functions (کارت تبلیغاتی Worker)
+    fun loadAdData() {
+        viewModelScope.launch {
+            try {
+                val result = AdManager.getAdData()
+                _adData.value = result
+            } catch (e: Exception) {
+                _adData.value = null
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ✅ Eitaa functions (کارت ایتا)
+    fun loadEitaaPost() {
+        viewModelScope.launch {
+            try {
+                val result = EitaaApi.getLatestPost()
+                _eitaaPost.value = result
+            } catch (e: Exception) {
+                _eitaaPost.value = null
                 e.printStackTrace()
             }
         }
