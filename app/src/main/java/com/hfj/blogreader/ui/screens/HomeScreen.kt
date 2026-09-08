@@ -144,7 +144,8 @@ fun HomeScreen(
                                                 .fillMaxWidth()
                                                 .height(50.dp)
                                                 .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
-                                            contentScale = ContentScale.FillBounds
+                                            contentScale = ContentScale.FillBounds,
+                                            imageLoader = LocalContext.current.imageLoader  // ✅ پشتیبانی از GIF
                                         )
                                         if (!ad.title.isNullOrEmpty()) {
                                             Text(
@@ -158,7 +159,7 @@ fun HomeScreen(
                                             TextButton(
                                                 onClick = { openLink(ad.link) },
                                                 modifier = Modifier.padding(horizontal = 14.dp)
-                                                    .padding(bottom = 8.dp)  // ✅ اصلاح شده
+                                                    .padding(bottom = 8.dp)
                                             ) {
                                                 Text("🔗 مشاهدة", fontSize = 12.sp * fontScale)
                                             }
