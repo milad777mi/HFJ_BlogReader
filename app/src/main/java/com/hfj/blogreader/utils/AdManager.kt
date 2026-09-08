@@ -22,13 +22,17 @@ object AdManager {
             if (connection.responseCode == 200) {
                 val json = connection.inputStream.bufferedReader().use { it.readText() }
                 val obj = JSONObject(json)
-                if (obj.optBoolean("exists", false)) {
+                
+                // ✅ بررسی وجود imageUrl به جای exists
+                val imageUrl = obj.optString("imageUrl", "")
+                
+                if (imageUrl.isNotEmpty()) {
                     AdData(
                         exists = true,
-                        imageUrl = obj.optString("imageUrl"),
-                        link = obj.optString("link"),
-                        title = obj.optString("title"),
-                        updatedAt = obj.optLong("updatedAt")
+                        imageUrl = imageUrl,
+                        link = obj.optString("link", ""),
+                        title = obj.optString("title", ""),
+                        updatedAt = obj.optLong("updatedAt", 0)
                     )
                 } else {
                     AdData(exists = false)
@@ -37,6 +41,7 @@ object AdManager {
                 AdData(exists = false)
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             AdData(exists = false)
         }
     }
