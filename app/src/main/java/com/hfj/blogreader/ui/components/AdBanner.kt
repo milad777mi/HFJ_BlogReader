@@ -20,8 +20,8 @@ fun AdBanner(
     adData: AdData?,
     onAdClick: (String) -> Unit
 ) {
-    // اگر تبلیغات وجود نداشت، هیچ‌چیزی نمایش نده
-    if (adData == null || !adData.exists || adData.imageUrl == null) return
+    // ✅ فقط وجود imageUrl را بررسی کن (بدون نیاز به exists)
+    if (adData == null || adData.imageUrl.isNullOrEmpty()) return
 
     val fontScale = LocalFontScale.current
 
