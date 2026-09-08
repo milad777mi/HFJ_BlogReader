@@ -87,8 +87,9 @@ dependencies {
     // Jsoup (استخراج HTML)
     implementation("org.jsoup:jsoup:1.17.2")
 
-    // Coil (نمایش تصاویر)
+    // ✅ Coil (نمایش تصاویر و پشتیبانی از GIF)
     implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-gif:2.6.0")  // ← اضافه شده برای پشتیبانی از GIF
 
     // ExoPlayer (پخش فیلم)
     implementation("androidx.media3:media3-exoplayer:1.3.1")
