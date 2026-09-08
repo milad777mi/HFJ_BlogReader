@@ -35,27 +35,45 @@ fun HomeScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val fontScale = LocalFontScale.current
 
-    // ✅ دریافت داده‌های کارت‌های تبلیغاتی
+    // ✅ دریافت داده‌های تبلیغاتی
     val adData by viewModel.adData.collectAsState()
     val eitaaPost by viewModel.eitaaPost.collectAsState()
 
-    // ✅ کپی محلی برای Smart cast
-    val ad = adData
-    val eitaa = eitaaPost
-
-    // ✅ بارگذاری کارت‌ها هنگام ورود به صفحه
+    // ✅ بارگذاری خودکار هنگام ورود
     LaunchedEffect(Unit) {
         viewModel.loadAdData()
         viewModel.loadEitaaPost()
     }
 
-    // تابع باز کردن لینک در مرورگر
+    // ✅ لاگ‌های دیباگ برای بررسی وضعیت adData
+    LaunchedEffect(adData) {
+        if (adData != null) {
+            android.util.Log.d("HomeScreen", "✅ Ad Data: exists=${adData.exists}, imageUrl=${adData.imageUrl}, title=${adData.title}")
+            println("✅ Ad Data: exists=${adData.exists}, imageUrl=${adData.imageUrl}")
+        } else {
+            android.util.Log.d("HomeScreen", "❌ Ad Data is null")
+            println("❌ Ad Data is null")
+        }
+    }
+
+    // ✅ نمایش وضعیت بارگذاری تبلیغات (برای دیباگ)
+    val adStatus = if (adData == null) {
+        "⏳ در حال بارگذاری تبلیغات..."
+    } else if (!adData.exists) {
+        "📭 تبلیغات موجود نیست"
+    } else if (adData.imageUrl.isNullOrEmpty()) {
+        "⚠️ آدرس تصویر تبلیغات خالی است"
+    } else {
+        "✅ تبلیغات بارگذاری شد"
+    }
+
+    // تابع باز کردن لینک
     fun openLink(link: String) {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
             context.startActivity(intent)
         } catch (e: Exception) {
-            // اگر لینک نامعتبر بود، کاری نکن
+            // خطا را نادیده بگیر
         }
     }
 
@@ -124,11 +142,20 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            "لا توجد مشاركات",
-                            fontSize = 16.sp * fontScale,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            // ✅ نمایش وضعیت تبلیغات در صفحه (برای دیباگ)
+                            Text(
+                                text = adStatus,
+                                fontSize = 14.sp * fontScale,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            Text(
+                                "لا توجد مشاركات",
+                                fontSize = 16.sp * fontScale,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
                     }
                 }
                 else -> {
@@ -137,21 +164,31 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // ✅ کارت تبلیغاتی Worker (با کپی محلی ad)
-                        if (ad != null && ad.exists && !ad.imageUrl.isNullOrEmpty()) {
+                        // ✅ نمایش وضعیت تبلیغات (فقط برای دیباگ)
+                        item {
+                            Text(
+                                text = adStatus,
+                                fontSize = 12.sp * fontScale,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        // ✅ کارت تبلیغاتی Worker (در صورت وجود)
+                        if (adData != null && adData.exists && !adData.imageUrl.isNullOrEmpty()) {
                             item {
                                 AdBanner(
-                                    adData = ad,
+                                    adData = adData,
                                     onAdClick = { link -> openLink(link) }
                                 )
                             }
                         }
 
-                        // ✅ کارت ایتا (با کپی محلی eitaa)
-                        if (eitaa != null && !eitaa.text.isNullOrBlank()) {
+                        // ✅ کارت ایتا (در صورت وجود)
+                        if (eitaaPost != null && !eitaaPost.text.isNullOrBlank()) {
                             item {
                                 EitaaBanner(
-                                    eitaaPost = eitaa,
+                                    eitaaPost = eitaaPost,
                                     onLinkClick = { link -> openLink(link) }
                                 )
                             }
