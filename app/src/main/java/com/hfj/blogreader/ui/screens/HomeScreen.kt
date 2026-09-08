@@ -121,7 +121,7 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // کارت تبلیغاتی Worker
+                        // ✅ کارت تبلیغاتی
                         if (ad != null && !ad.imageUrl.isNullOrEmpty()) {
                             item {
                                 Card(
@@ -157,7 +157,8 @@ fun HomeScreen(
                                         if (!ad.link.isNullOrEmpty()) {
                                             TextButton(
                                                 onClick = { openLink(ad.link) },
-                                                modifier = Modifier.padding(horizontal = 14.dp, bottom = 8.dp)
+                                                modifier = Modifier.padding(horizontal = 14.dp)
+                                                    .padding(bottom = 8.dp)  // ✅ اصلاح شده
                                             ) {
                                                 Text("🔗 مشاهدة", fontSize = 12.sp * fontScale)
                                             }
@@ -167,7 +168,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // کارت ایتا
+                        // ✅ کارت ایتا
                         if (eitaa != null && !eitaa.text.isNullOrBlank()) {
                             item {
                                 Card(
@@ -203,7 +204,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // لیست مطالب
+                        // ✅ لیست مطالب
                         items(posts) { post ->
                             PostCard(
                                 post = post,
