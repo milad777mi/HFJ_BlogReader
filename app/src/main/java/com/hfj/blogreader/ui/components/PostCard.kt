@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext  // ✅ اضافه شد
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,9 +28,10 @@ import com.hfj.blogreader.ui.theme.LocalFontScale
 fun PostCard(
     post: Post,
     onCardClick: () -> Unit,
-    onImageClick: (String) -> Unit = {}  // این پارامتر نگه داشته شده اما استفاده نمی‌شود
+    onImageClick: (String) -> Unit = {}
 ) {
     val fontScale = LocalFontScale.current
+    val context = LocalContext.current  // ✅ اضافه شد
 
     Card(
         modifier = Modifier
@@ -44,9 +46,8 @@ fun PostCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // ✅ نمایش تصویر/فیلم در کارت
             when {
-                // 1. هم عکس و هم فیلم دارد → عکس به‌عنوان پیش‌نمایش فیلم
+                // 1. هم عکس و هم فیلم دارد
                 post.imageUrls.isNotEmpty() && post.videoUrl != null -> {
                     val imageUrl = post.imageUrls.first()
                     Box(
@@ -54,15 +55,15 @@ fun PostCard(
                             .fillMaxWidth()
                             .height(190.dp)
                             .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                            .clickable { onCardClick() }  // ✅ فقط باز شدن مطلب
+                            .clickable { onCardClick() }
                     ) {
                         AsyncImage(
                             model = imageUrl,
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
+                            imageLoader = context.imageLoader  // ✅ پشتیبانی از GIF
                         )
-                        // آیکون پلی روی عکس
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -78,7 +79,7 @@ fun PostCard(
                         }
                     }
                 }
-                // 2. فقط فیلم دارد → آیکون پلی
+                // 2. فقط فیلم دارد
                 post.videoUrl != null -> {
                     Box(
                         modifier = Modifier
@@ -104,7 +105,7 @@ fun PostCard(
                         }
                     }
                 }
-                // 3. فقط عکس دارد → عکس کامل
+                // 3. فقط عکس دارد
                 post.imageUrls.isNotEmpty() -> {
                     if (post.imageUrls.size == 1) {
                         val imageUrl = post.imageUrls.first()
@@ -115,8 +116,9 @@ fun PostCard(
                                 .fillMaxWidth()
                                 .height(190.dp)
                                 .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                                .clickable { onCardClick() },  // ✅ فقط باز شدن مطلب
-                            contentScale = ContentScale.Crop
+                                .clickable { onCardClick() },
+                            contentScale = ContentScale.Crop,
+                            imageLoader = context.imageLoader  // ✅ پشتیبانی از GIF
                         )
                     } else {
                         LazyRow(
@@ -132,24 +134,24 @@ fun PostCard(
                                     modifier = Modifier
                                         .width(200.dp)
                                         .fillMaxHeight()
-                                        .clickable { onCardClick() },  // ✅ فقط باز شدن مطلب
-                                    contentScale = ContentScale.Crop
+                                        .clickable { onCardClick() },
+                                    contentScale = ContentScale.Crop,
+                                    imageLoader = context.imageLoader  // ✅ پشتیبانی از GIF
                                 )
                             }
                         }
                     }
                 }
-                // 4. هیچ عکس و فیلمی ندارد → هیچ چیز نمایش داده نشود
+                // 4. هیچ عکس و فیلمی ندارد
                 else -> { /* خالی */ }
             }
 
-            // ========== محتوای کارت ==========
+            // محتوای کارت
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(14.dp)
             ) {
-                // عنوان جدا با فونت بزرگتر
                 if (post.title != null && post.title.isNotEmpty()) {
                     Text(
                         text = post.title,
@@ -162,7 +164,6 @@ fun PostCard(
                     )
                 }
 
-                // متن کوتاه (۳ خط)
                 Text(
                     text = post.content,
                     fontSize = 14.sp * fontScale,
@@ -174,7 +175,6 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // تاریخ
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
