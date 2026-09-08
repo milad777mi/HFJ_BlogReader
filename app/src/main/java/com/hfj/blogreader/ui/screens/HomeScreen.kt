@@ -121,13 +121,13 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // ✅ کارت تبلیغاتی Worker (مثل پست)
+                        // ✅ کارت تبلیغاتی Worker
                         if (ad != null && !ad.imageUrl.isNullOrEmpty()) {
                             item {
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(bottom = 14.dp),
+                                        .padding(vertical = 4.dp),
                                     shape = RoundedCornerShape(18.dp),
                                     colors = CardDefaults.cardColors(
                                         containerColor = MaterialTheme.colorScheme.surface
@@ -167,13 +167,13 @@ fun HomeScreen(
                             }
                         }
 
-                        // ✅ کارت ایتا (مثل پست)
+                        // ✅ کارت ایتا
                         if (eitaa != null && !eitaa.text.isNullOrBlank()) {
                             item {
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(bottom = 14.dp),
+                                        .padding(vertical = 4.dp),
                                     shape = RoundedCornerShape(18.dp),
                                     colors = CardDefaults.cardColors(
                                         containerColor = MaterialTheme.colorScheme.primaryContainer
