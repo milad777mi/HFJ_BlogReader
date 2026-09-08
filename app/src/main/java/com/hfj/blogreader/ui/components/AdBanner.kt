@@ -9,10 +9,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.LocalImageLoader  // ✅ پشتیبانی از GIF
 import com.hfj.blogreader.data.models.AdData
 import com.hfj.blogreader.ui.theme.LocalFontScale
 
@@ -49,7 +49,7 @@ fun AdBanner(
                     .fillMaxWidth()
                     .height(50.dp),
                 contentScale = ContentScale.FillBounds,
-                imageLoader = LocalContext.current.imageLoader  // ✅ پشتیبانی از GIF
+                imageLoader = LocalImageLoader.current  // ✅ پشتیبانی از GIF
             )
             if (!adData.title.isNullOrEmpty()) {
                 Text(
