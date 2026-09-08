@@ -144,7 +144,7 @@ fun HomeScreen(
                         }
 
                         // ✅ کارت ایتا (در صورت وجود)
-                        if (eitaaPost != null && eitaaPost.text.isNotBlank()) {
+                        if (eitaaPost != null && !eitaaPost.text.isNullOrBlank()) {
                             item {
                                 EitaaBanner(
                                     eitaaPost = eitaaPost,
