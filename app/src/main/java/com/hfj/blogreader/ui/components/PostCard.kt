@@ -16,11 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext  // ✅ اضافه شد
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.LocalImageLoader  // ✅ پشتیبانی از GIF
 import com.hfj.blogreader.data.models.Post
 import com.hfj.blogreader.ui.theme.LocalFontScale
 
@@ -31,7 +31,6 @@ fun PostCard(
     onImageClick: (String) -> Unit = {}
 ) {
     val fontScale = LocalFontScale.current
-    val context = LocalContext.current  // ✅ اضافه شد
 
     Card(
         modifier = Modifier
@@ -62,7 +61,7 @@ fun PostCard(
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop,
-                            imageLoader = context.imageLoader  // ✅ پشتیبانی از GIF
+                            imageLoader = LocalImageLoader.current  // ✅ پشتیبانی از GIF
                         )
                         Box(
                             modifier = Modifier
@@ -118,7 +117,7 @@ fun PostCard(
                                 .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
                                 .clickable { onCardClick() },
                             contentScale = ContentScale.Crop,
-                            imageLoader = context.imageLoader  // ✅ پشتیبانی از GIF
+                            imageLoader = LocalImageLoader.current  // ✅ پشتیبانی از GIF
                         )
                     } else {
                         LazyRow(
@@ -136,7 +135,7 @@ fun PostCard(
                                         .fillMaxHeight()
                                         .clickable { onCardClick() },
                                     contentScale = ContentScale.Crop,
-                                    imageLoader = context.imageLoader  // ✅ پشتیبانی از GIF
+                                    imageLoader = LocalImageLoader.current  // ✅ پشتیبانی از GIF
                                 )
                             }
                         }
