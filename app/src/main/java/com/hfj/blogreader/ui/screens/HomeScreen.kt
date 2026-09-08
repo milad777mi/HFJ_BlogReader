@@ -39,6 +39,10 @@ fun HomeScreen(
     val adData by viewModel.adData.collectAsState()
     val eitaaPost by viewModel.eitaaPost.collectAsState()
 
+    // ✅ کپی محلی برای Smart cast
+    val ad = adData
+    val eitaa = eitaaPost
+
     // ✅ بارگذاری خودکار هنگام ورود
     LaunchedEffect(Unit) {
         viewModel.loadAdData()
@@ -133,21 +137,21 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // ✅ کارت تبلیغاتی Worker (فقط وجود imageUrl را بررسی کن)
-                        if (adData != null && !adData.imageUrl.isNullOrEmpty()) {
+                        // ✅ کارت تبلیغاتی Worker (با کپی محلی ad)
+                        if (ad != null && !ad.imageUrl.isNullOrEmpty()) {
                             item {
                                 AdBanner(
-                                    adData = adData,
+                                    adData = ad,
                                     onAdClick = { link -> openLink(link) }
                                 )
                             }
                         }
 
-                        // ✅ کارت ایتا (در صورت وجود)
-                        if (eitaaPost != null && !eitaaPost.text.isNullOrBlank()) {
+                        // ✅ کارت ایتا (با کپی محلی eitaa)
+                        if (eitaa != null && !eitaa.text.isNullOrBlank()) {
                             item {
                                 EitaaBanner(
-                                    eitaaPost = eitaaPost,
+                                    eitaaPost = eitaa,
                                     onLinkClick = { link -> openLink(link) }
                                 )
                             }
