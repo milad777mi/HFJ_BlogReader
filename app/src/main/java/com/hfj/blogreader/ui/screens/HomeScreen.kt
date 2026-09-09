@@ -143,7 +143,7 @@ fun HomeScreen(
                                             contentDescription = ad.title ?: "تبلیغات",
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(50.dp)
+                                                .height(150.dp)
                                                 .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
                                             contentScale = ContentScale.FillBounds,
                                             imageLoader = LocalImageLoader.current  // ✅ پشتیبانی از GIF
