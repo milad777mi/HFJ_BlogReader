@@ -127,7 +127,10 @@ fun HomeScreen(
                         // ============================================
                         // ✅ کارت‌های تبلیغات متنی (۲ پیام از کانال تلگرام)
                         // ============================================
-                        items(adTextItems) { adText ->
+                        items(
+                            items = adTextItems,
+                            key = { "adtext_${it.id}" }
+                        ) { adText ->
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -164,7 +167,7 @@ fun HomeScreen(
                         // کارت تبلیغاتی تصویری
                         // ============================================
                         if (ad != null && !ad.imageUrl.isNullOrEmpty()) {
-                            item {
+                            item(key = "ad_banner") {
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -214,7 +217,7 @@ fun HomeScreen(
                         // کارت ایتا
                         // ============================================
                         if (eitaa != null && !eitaa.text.isNullOrBlank()) {
-                            item {
+                            item(key = "eitaa_banner") {
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -251,7 +254,10 @@ fun HomeScreen(
                         // ============================================
                         // لیست مطالب
                         // ============================================
-                        items(posts) { post ->
+                        items(
+                            items = posts,
+                            key = { post -> "post_${post.id}" }
+                        ) { post ->
                             PostCard(
                                 post = post,
                                 onCardClick = { navController.navigate("post/${post.id}") }
