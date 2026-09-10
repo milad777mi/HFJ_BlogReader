@@ -8,6 +8,7 @@ import com.hfj.blogreader.data.models.Post
 import com.hfj.blogreader.data.models.Comment
 import com.hfj.blogreader.data.models.AdData
 import com.hfj.blogreader.data.models.EitaaPost
+import com.hfj.blogreader.data.models.AdTextItem
 import com.hfj.blogreader.data.repository.BlogRepository
 import com.hfj.blogreader.utils.FontSizeManager
 import com.hfj.blogreader.utils.BlogStats
@@ -16,6 +17,7 @@ import com.hfj.blogreader.utils.LikeManager
 import com.hfj.blogreader.utils.CommentManager
 import com.hfj.blogreader.utils.AdManager
 import com.hfj.blogreader.utils.EitaaApi
+import com.hfj.blogreader.utils.AdTextManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -56,13 +58,17 @@ class MainViewModel(
     private val _comments = MutableStateFlow<Map<String, List<Comment>>>(emptyMap())
     val comments: StateFlow<Map<String, List<Comment>>> = _comments
 
-    // ✅ Ads (کارت تبلیغاتی Worker)
+    // ✅ Ads (کارت تبلیغاتی تصویری Worker)
     private val _adData = MutableStateFlow<AdData?>(null)
     val adData: StateFlow<AdData?> = _adData
 
     // ✅ Eitaa (کارت ایتا)
     private val _eitaaPost = MutableStateFlow<EitaaPost?>(null)
     val eitaaPost: StateFlow<EitaaPost?> = _eitaaPost
+
+    // ✅ AdText (کارت تبلیغات متنی - ۲ پیام از کانال تلگرام)
+    private val _adTextItems = MutableStateFlow<List<AdTextItem>>(emptyList())
+    val adTextItems: StateFlow<List<AdTextItem>> = _adTextItems
 
     fun fetchAllPosts() {
         viewModelScope.launch {
@@ -174,7 +180,7 @@ class MainViewModel(
         }
     }
 
-    // ✅ Ad functions (کارت تبلیغاتی Worker)
+    // ✅ Ad functions (کارت تبلیغاتی تصویری Worker)
     fun loadAdData() {
         viewModelScope.launch {
             try {
@@ -195,6 +201,19 @@ class MainViewModel(
                 _eitaaPost.value = result
             } catch (e: Exception) {
                 _eitaaPost.value = null
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ✅ AdText functions (کارت تبلیغات متنی - ۲ پیام از کانال تلگرام)
+    fun loadAdTextItems() {
+        viewModelScope.launch {
+            try {
+                val result = AdTextManager.getAdTextItems()
+                _adTextItems.value = result ?: emptyList()
+            } catch (e: Exception) {
+                _adTextItems.value = emptyList()
                 e.printStackTrace()
             }
         }
