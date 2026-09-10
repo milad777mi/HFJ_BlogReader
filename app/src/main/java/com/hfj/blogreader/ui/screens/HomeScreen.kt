@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import coil.compose.LocalImageLoader  // ✅ پشتیبانی از GIF
+import coil.compose.LocalImageLoader
 import com.hfj.blogreader.ui.components.PostCard
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
@@ -40,6 +40,7 @@ fun HomeScreen(
 
     val adData by viewModel.adData.collectAsState()
     val eitaaPost by viewModel.eitaaPost.collectAsState()
+    val adTextItems by viewModel.adTextItems.collectAsState()
 
     val ad = adData
     val eitaa = eitaaPost
@@ -47,6 +48,7 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         viewModel.loadAdData()
         viewModel.loadEitaaPost()
+        viewModel.loadAdTextItems()
     }
 
     fun openLink(link: String) {
@@ -122,7 +124,45 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // کارت تبلیغاتی
+                        // ============================================
+                        // ✅ کارت‌های تبلیغات متنی (۲ پیام از کانال تلگرام)
+                        // ============================================
+                        items(adTextItems) { adText ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp)
+                                ) {
+                                    Text(
+                                        text = adText.text,
+                                        fontSize = 14.sp * fontScale,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    if (!adText.link.isNullOrEmpty()) {
+                                        TextButton(
+                                            onClick = { openLink(adText.link) },
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        ) {
+                                            Text("🔗 مشاهده", fontSize = 12.sp * fontScale)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ============================================
+                        // کارت تبلیغاتی تصویری
+                        // ============================================
                         if (ad != null && !ad.imageUrl.isNullOrEmpty()) {
                             item {
                                 Card(
@@ -146,7 +186,7 @@ fun HomeScreen(
                                                 .height(150.dp)
                                                 .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
                                             contentScale = ContentScale.FillBounds,
-                                            imageLoader = LocalImageLoader.current  // ✅ پشتیبانی از GIF
+                                            imageLoader = LocalImageLoader.current
                                         )
                                         if (!ad.title.isNullOrEmpty()) {
                                             Text(
@@ -162,7 +202,7 @@ fun HomeScreen(
                                                 modifier = Modifier.padding(horizontal = 14.dp)
                                                     .padding(bottom = 8.dp)
                                             ) {
-                                                Text("🔗 مشاهدة", fontSize = 12.sp * fontScale)
+                                                Text("🔗 مشاهده", fontSize = 12.sp * fontScale)
                                             }
                                         }
                                     }
@@ -170,7 +210,9 @@ fun HomeScreen(
                             }
                         }
 
+                        // ============================================
                         // کارت ایتا
+                        // ============================================
                         if (eitaa != null && !eitaa.text.isNullOrBlank()) {
                             item {
                                 Card(
@@ -198,7 +240,7 @@ fun HomeScreen(
                                                 onClick = { openLink(eitaa.link) },
                                                 modifier = Modifier.padding(top = 4.dp)
                                             ) {
-                                                Text("🔗 مشاهدة", fontSize = 12.sp * fontScale)
+                                                Text("🔗 مشاهده", fontSize = 12.sp * fontScale)
                                             }
                                         }
                                     }
@@ -206,7 +248,9 @@ fun HomeScreen(
                             }
                         }
 
+                        // ============================================
                         // لیست مطالب
+                        // ============================================
                         items(posts) { post ->
                             PostCard(
                                 post = post,
