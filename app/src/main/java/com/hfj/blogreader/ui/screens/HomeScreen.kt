@@ -25,7 +25,6 @@ import coil.compose.LocalImageLoader
 import com.hfj.blogreader.ui.components.PostCard
 import com.hfj.blogreader.ui.theme.LocalFontScale
 import com.hfj.blogreader.viewmodel.MainViewModel
-import kotlinx.coroutines.delay  // ✅ اضافه شد
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,20 +44,6 @@ fun HomeScreen(
 
     val ad = adData
     val eitaa = eitaaPost
-
-    // ✅ بارگذاری ترتیبی (Lazy Loading)
-    LaunchedEffect(Unit) {
-        // 1. مطالب اول بارگذاری می‌شوند (fetchAllPosts در init ViewModel)
-        // 2. سپس کارت‌ها به‌صورت ترتیبی و با تأخیر
-        delay(500)
-        viewModel.loadAdTextItems()
-
-        delay(300)
-        viewModel.loadAdData()
-
-        delay(300)
-        viewModel.loadEitaaPost()
-    }
 
     fun openLink(link: String) {
         try {
