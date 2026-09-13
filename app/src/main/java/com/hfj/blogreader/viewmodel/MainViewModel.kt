@@ -18,6 +18,7 @@ import com.hfj.blogreader.utils.CommentManager
 import com.hfj.blogreader.utils.AdManager
 import com.hfj.blogreader.utils.EitaaApi
 import com.hfj.blogreader.utils.AdTextManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -220,6 +221,19 @@ class MainViewModel(
     }
 
     init {
+        // 1. مطالب وبلاگ (اول)
         fetchAllPosts()
+
+        // 2. کارت‌ها فقط یک بار هنگام ساخت ViewModel (با تأخیر ترتیبی)
+        viewModelScope.launch {
+            delay(500)
+            loadAdTextItems()
+
+            delay(300)
+            loadAdData()
+
+            delay(300)
+            loadEitaaPost()
+        }
     }
 }
