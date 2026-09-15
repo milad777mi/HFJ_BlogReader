@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -35,7 +36,10 @@ fun HomeScreen(
     val context = LocalContext.current
     val posts by viewModel.filteredPosts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val hasMorePosts by viewModel.hasMorePosts.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val refreshMessage by viewModel.refreshMessage.collectAsState()
     val fontScale = LocalFontScale.current
 
     val adData by viewModel.adData.collectAsState()
@@ -45,6 +49,9 @@ fun HomeScreen(
     val ad = adData
     val eitaa = eitaaPost
 
+    val listState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
     fun openLink(link: String) {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
@@ -52,7 +59,34 @@ fun HomeScreen(
         } catch (e: Exception) { }
     }
 
+    // ============================================================
+    // 🆕 اسکرول بی‌نهایت: وقتی به ۳ آیتم آخر رسیدیم، صفحه بعد رو لود کن
+    // ============================================================
+    LaunchedEffect(listState, posts.size, hasMorePosts) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleIndex >= totalItems - 3
+        }.collect { shouldLoadMore ->
+            if (shouldLoadMore && hasMorePosts && !isLoadingMore && !isLoading) {
+                viewModel.loadMorePosts()
+            }
+        }
+    }
+
+    // ============================================================
+    // 🆕 نمایش پیام Refresh (اگه ۱۳ دقیقه نگذشته باشه)
+    // ============================================================
+    LaunchedEffect(refreshMessage) {
+        refreshMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            viewModel.clearRefreshMessage()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -63,7 +97,7 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.fetchAllPosts() }) {
+                    IconButton(onClick = { viewModel.forceRefresh() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "تحديث")
                     }
                     IconButton(onClick = { navController.navigate("settings") }) {
@@ -82,7 +116,7 @@ fun HomeScreen(
                 .padding(paddingValues)
         ) {
             when {
-                isLoading -> {
+                isLoading && posts.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -94,7 +128,7 @@ fun HomeScreen(
                         }
                     }
                 }
-                errorMessage != null -> {
+                errorMessage != null && posts.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -106,7 +140,7 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = { viewModel.fetchAllPosts() }) {
+                            Button(onClick = { viewModel.forceRefresh() }) {
                                 Text("🔄 إعادة المحاولة")
                             }
                         }
@@ -114,12 +148,13 @@ fun HomeScreen(
                 }
                 else -> {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         // ============================================
-                        // ✅ کارت‌های تبلیغات متنی (۲ پیام از کانال تلگرام)
+                        // کارت‌های تبلیغات متنی
                         // ============================================
                         items(
                             items = adTextItems,
@@ -256,6 +291,42 @@ fun HomeScreen(
                                 post = post,
                                 onCardClick = { navController.navigate("post/${post.id}") }
                             )
+                        }
+
+                        // ============================================
+                        // 🆕 اسپینر پایین لیست (موقع لود صفحه بعد)
+                        // ============================================
+                        if (isLoadingMore) {
+                            item(key = "loading_more") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                }
+                            }
+                        }
+
+                        // ============================================
+                        // 🆕 پیام «پایان مطالب» (اگه صفحه بعدی نباشه)
+                        // ============================================
+                        if (!hasMorePosts && posts.isNotEmpty() && !isLoadingMore) {
+                            item(key = "end_of_posts") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "✅ لا مزيد من المنشورات",
+                                        fontSize = 13.sp * fontScale,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
