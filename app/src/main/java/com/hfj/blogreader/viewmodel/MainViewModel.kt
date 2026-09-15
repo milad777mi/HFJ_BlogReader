@@ -95,7 +95,6 @@ class MainViewModel(
         return if (min > 0) "$min دقيقة و $sec ثانية" else "$sec ثانية"
     }
 
-    // ✅ تابع جدید: ذخیره یا حذف next_page_url به صورت مطمئن
     private fun saveNextPageUrl(url: String?) {
         val editor = prefs.edit()
         if (url.isNullOrBlank()) {
@@ -148,7 +147,7 @@ class MainViewModel(
                     nextPageUrl = prefs.getString("next_page_url", null)
                     _hasMorePosts.value = !nextPageUrl.isNullOrBlank()
                 } else {
-                    _errorMessage.value = "❌ خطا: ${e.message}"
+                    _errorMessage.value = "❌ تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.mms.net.services.errors"
                     _allPosts.value = emptyList()
                 }
                 e.printStackTrace()
@@ -228,7 +227,7 @@ class MainViewModel(
 
                 saveNextPageUrl(nextUrl)
             } catch (e: Exception) {
-                _errorMessage.value = "❌ خطا: ${e.message}"
+                _errorMessage.value = "❌ تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.mms.net.services.errors"
                 e.printStackTrace()
             }
             _isLoading.value = false
