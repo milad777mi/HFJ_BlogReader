@@ -1,39 +1,145 @@
 package com.hfj.blogreader.data.repository
 
+import android.content.Context
+import com.hfj.blogreader.data.local.AppDatabase
+import com.hfj.blogreader.data.local.PostEntity
 import com.hfj.blogreader.data.models.Post
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 
-class BlogRepository {
+class BlogRepository(private val context: Context) {
 
     private val baseUrl = "https://bllosoft-glade-6b08.bnmkiio180.workers.dev"
+    private val db = AppDatabase.getInstance(context)
+    private val postDao = db.postDao()
 
+    // ⏱️ مدت کش: ۱۰ دقیقه
+    private val CACHE_DURATION_MS = 10 * 60 * 1000L
+
+    /**
+     * ✅ بررسی می‌کنه که کش معتبره یا نه (کمتر از ۱۰ دقیقه گذشته)
+     */
+    suspend fun isCacheValid(): Boolean {
+        val lastCacheTime = postDao.getLatestCacheTime() ?: return false
+        val elapsed = System.currentTimeMillis() - lastCacheTime
+        return elapsed < CACHE_DURATION_MS
+    }
+
+    /**
+     * ✅ فقط از دیتابیس محلی می‌خونه (بدون درخواست به سرور)
+     */
+    suspend fun getCachedPosts(): List<Post> = withContext(Dispatchers.IO) {
+        postDao.getAllPosts().map { it.toPost() }
+    }
+
+    /**
+     * ✅ فقط صفحه اول رو از سرور می‌گیره و توی دیتابیس ذخیره می‌کنه
+     * @return لیست پست‌های صفحه اول + آدرس صفحه بعد (اگه وجود داشته باشه)
+     */
+    suspend fun fetchFirstPage(): Pair<List<Post>, String?> = withContext(Dispatchers.IO) {
+        val doc = fetchDocument(baseUrl)
+        val posts = extractPosts(doc)
+        val nextLink = doc.select("a.nextlink").first()?.attr("href")
+            ?.let { "$baseUrl$it" }
+
+        // ذخیره توی دیتابیس
+        if (posts.isNotEmpty()) {
+            postDao.insertPosts(posts.map { PostEntity.fromPost(it) })
+        }
+
+        posts to nextLink
+    }
+
+    /**
+     * ✅ صفحه بعد رو از سرور می‌گیره (برای اسکرول بی‌نهایت)
+     * @param nextUrl آدرس صفحه بعد
+     * @return لیست پست‌ها + آدرس صفحه بعدی
+     */
+    suspend fun fetchNextPage(nextUrl: String): Pair<List<Post>, String?> = withContext(Dispatchers.IO) {
+        val doc = fetchDocument(nextUrl)
+        val posts = extractPosts(doc)
+        val nextLink = doc.select("a.nextlink").first()?.attr("href")
+            ?.let { "$baseUrl$it" }
+
+        if (posts.isNotEmpty()) {
+            postDao.insertPosts(posts.map { PostEntity.fromPost(it) })
+        }
+
+        posts to nextLink
+    }
+
+    /**
+     * ✅ API قدیمی (برای سازگاری با MainViewModel فعلی)
+     * اگه کش معتبره، از دیتابیس می‌خونه
+     * وگرنه همه صفحات رو می‌گیره (مثل قبل)
+     */
     suspend fun fetchAllPosts(): List<Post> = withContext(Dispatchers.IO) {
+        // 1️⃣ اگه کش معتبره، از دیتابیس برگردون
+        if (isCacheValid()) {
+            val cached = postDao.getAllPosts()
+            if (cached.isNotEmpty()) {
+                return@withContext cached.map { it.toPost() }
+            }
+        }
+
+        // 2️⃣ وگرنه همه صفحات رو از سرور بگیر (رفتار قبلی)
         val allPosts = mutableListOf<Post>()
-        var currentUrl = baseUrl
+        var currentUrl: String? = baseUrl
 
-        while (currentUrl.isNotEmpty()) {
-            val doc = Jsoup.connect(currentUrl)
-                .timeout(30000)
-                .userAgent("Mozilla/5.0")
-                .ignoreContentType(true)
-                .ignoreHttpErrors(true)
-                .get()
+        while (currentUrl != null) {
+            try {
+                val doc = fetchDocument(currentUrl)
+                val posts = extractPosts(doc)
+                allPosts.addAll(posts)
 
-            val posts = extractPosts(doc)
-            allPosts.addAll(posts)
+                val nextLink = doc.select("a.nextlink").first()?.attr("href")
+                currentUrl = nextLink?.let { "$baseUrl$it" }
 
-            val nextLink = doc.select("a.nextlink").first()
-            currentUrl = nextLink?.attr("href")?.let { "$baseUrl$it" } ?: ""
-            delay(500)
+                delay(500)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                break
+            }
+        }
+
+        // 3️⃣ ذخیره توی دیتابیس
+        if (allPosts.isNotEmpty()) {
+            postDao.insertPosts(allPosts.map { PostEntity.fromPost(it) })
         }
 
         allPosts
     }
 
-    private fun extractPosts(doc: org.jsoup.nodes.Document): List<Post> {
+    /**
+     * ✅ فقط وقتی به سرور درخواست بزن که کش منقضی شده باشه
+     * برای Pull-to-Refresh هوشمند
+     */
+    suspend fun refreshPosts(): List<Post> = withContext(Dispatchers.IO) {
+        fetchAllPosts()
+    }
+
+    /**
+     * ✅ پاک کردن کش (اختیاری)
+     */
+    suspend fun clearCache() = withContext(Dispatchers.IO) {
+        postDao.clearAll()
+    }
+
+    // ---------- متدهای داخلی ----------
+
+    private suspend fun fetchDocument(url: String): Document = withContext(Dispatchers.IO) {
+        Jsoup.connect(url)
+            .timeout(30000)
+            .userAgent("Mozilla/5.0")
+            .ignoreContentType(true)
+            .ignoreHttpErrors(true)
+            .get()
+    }
+
+    private fun extractPosts(doc: Document): List<Post> {
         val posts = mutableListOf<Post>()
 
         doc.select(".post").forEach { postElement ->
@@ -43,8 +149,6 @@ class BlogRepository {
                 val title = link?.text()?.trim() ?: ""
 
                 val contentDiv = postElement.select(".postcontent").first()
-                
-                // ✅ استخراج HTML و تبدیل تگ‌ها به خط جدید
                 val htmlContent = contentDiv?.html() ?: ""
                 val text = preserveLineBreaks(htmlContent)
 
@@ -78,7 +182,6 @@ class BlogRepository {
         return posts
     }
 
-    // ✅ تبدیل تگ‌های HTML به خط جدید و حذف تگ‌های اضافی
     private fun preserveLineBreaks(html: String): String {
         var text = html
             .replace("<br>", "\n")
@@ -86,16 +189,13 @@ class BlogRepository {
             .replace("<br/>", "\n")
             .replace("</p>", "\n")
             .replace("<p>", "")
-            .replace(Regex("<[^>]*>"), "") // حذف بقیه تگ‌ها
+            .replace(Regex("<[^>]*>"), "")
             .trim()
 
-        // تبدیل چند خط خالی پشت سر هم به یک خط
         text = text.replace(Regex("\n{2,}"), "\n")
-
         return text
     }
 
-    // ✅ استخراج تاریخ و حذف "+ نوشته شده در" و "ساعت"
     private fun extractFullDate(text: String): String {
         var date = text
             .replace(Regex("""^\+?\s*نوشته شده در\s*"""), "")
@@ -108,7 +208,6 @@ class BlogRepository {
             .trim()
 
         date = date.replace(Regex("""\s+"""), " ").trim()
-
         return if (date.isNotEmpty()) date else "تاریخ نامشخص"
     }
 }
