@@ -30,9 +30,9 @@ class MainViewModel(
     private val blogRepo = BlogRepository(getApplication())
     private val fontManager = FontSizeManager(getApplication())
 
-    private val APP_OPEN_INTERVAL_MS  = 13 * 60 * 1000L
-    private val REFRESH_INTERVAL_MS   = 20 * 60 * 1000L
-    private val LOAD_MORE_INTERVAL_MS =  3 * 60 * 1000L
+    private val APP_OPEN_INTERVAL_MS  = 10 * 60 * 1000L
+    private val REFRESH_INTERVAL_MS   = 5 * 60 * 1000L
+    private val LOAD_MORE_INTERVAL_MS =  1 * 60 * 1000L
 
     private val prefs: SharedPreferences =
         getApplication<Application>().getSharedPreferences("blog_prefs", Context.MODE_PRIVATE)
