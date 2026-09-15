@@ -30,11 +30,10 @@ class MainViewModel(
     private val blogRepo = BlogRepository(getApplication())
     private val fontManager = FontSizeManager(getApplication())
 
-    // ⏱️ محدودیت دکمه Refresh: ۱۳ دقیقه
-    private val REFRESH_INTERVAL_MS = 13 * 60 * 1000L
-
-    // ⏱️ محدودیت دکمه «نمایش بیشتر»: ۳ دقیقه
-    private val LOAD_MORE_INTERVAL_MS = 3 * 60 * 1000L
+    // ⏱️ محدودیت‌ها (سه تایمر مستقل)
+    private val APP_OPEN_INTERVAL_MS  = 13 * 60 * 1000L   // باز/بسته اپ: ۱۳ دقیقه
+    private val REFRESH_INTERVAL_MS   = 20 * 60 * 1000L   // دکمه Refresh: ۲۰ دقیقه
+    private val LOAD_MORE_INTERVAL_MS =  3 * 60 * 1000L   // نمایش بیشتر: ۳ دقیقه
 
     private val prefs: SharedPreferences =
         getApplication<Application>().getSharedPreferences("blog_prefs", Context.MODE_PRIVATE)
@@ -58,15 +57,9 @@ class MainViewModel(
     private val _hasMorePosts = MutableStateFlow(true)
     val hasMorePosts: StateFlow<Boolean> = _hasMorePosts
 
-    // 🆕 آیا کاربر می‌تونه دکمه «نمایش بیشتر» رو بزنه؟ (۳ دقیقه)
-    private val _canLoadMore = MutableStateFlow(true)
-    val canLoadMore: StateFlow<Boolean> = _canLoadMore
-
-    // 🆕 متن پیام برای دکمه «نمایش بیشتر»
     private val _loadMoreMessage = MutableStateFlow<String?>(null)
     val loadMoreMessage: StateFlow<String?> = _loadMoreMessage
 
-    // 🆕 متن پیام برای دکمه Refresh
     private val _refreshMessage = MutableStateFlow<String?>(null)
     val refreshMessage: StateFlow<String?> = _refreshMessage
 
@@ -100,18 +93,45 @@ class MainViewModel(
     val adTextItems: StateFlow<List<AdTextItem>> = _adTextItems
 
     // ============================================================
-    // لود صفحه اول
+    // 🔄 تابع کمکی: تبدیل میلی‌ثانیه به متن عربی
+    // ============================================================
+    private fun formatRemaining(ms: Long): String {
+        val totalSec = (ms / 1000).toInt()
+        val min = totalSec / 60
+        val sec = totalSec % 60
+        return if (min > 0) "$min دقيقة و $sec ثانية" else "$sec ثانية"
+    }
+
+    // ============================================================
+    // 📱 لود اولیه (باز/بسته اپ): محدودیت ۱۳ دقیقه
     // ============================================================
     fun loadFirstPage() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
+
+            val lastFetch = prefs.getLong("last_app_open_fetch", 0L)
+            val elapsed = System.currentTimeMillis() - lastFetch
+            val isCacheValid = elapsed < APP_OPEN_INTERVAL_MS
+
+            // 1️⃣ اگه کمتر از ۱۳ دقیقه → از Room بخون
+            if (isCacheValid) {
+                val cached = blogRepo.getCachedPosts()
+                if (cached.isNotEmpty()) {
+                    _allPosts.value = cached
+                    _isLoading.value = false
+                    return@launch
+                }
+            }
+
+            // 2️⃣ وگرنه از Worker بگیر
             try {
                 val (posts, nextUrl) = blogRepo.fetchFirstPage()
                 _allPosts.value = posts
                 nextPageUrl = nextUrl
                 _hasMorePosts.value = nextUrl != null
-                _canLoadMore.value = true  // اجازه لود صفحه بعد
+
+                prefs.edit().putLong("last_app_open_fetch", System.currentTimeMillis()).apply()
 
                 if (posts.isEmpty()) {
                     _errorMessage.value = "⚠️ هیچ پستی یافت نشد"
@@ -131,23 +151,18 @@ class MainViewModel(
     }
 
     // ============================================================
-    // 🆕 لود صفحه بعد (با محدودیت ۳ دقیقه) — فقط با دکمه
+    // 📥 نمایش بیشتر: محدودیت ۳ دقیقه (مستقل)
     // ============================================================
     fun loadMorePosts() {
         if (_isLoadingMore.value || !_hasMorePosts.value) return
         val url = nextPageUrl ?: return
 
-        // چک محدودیت ۳ دقیقه
-        val lastLoadMore = prefs.getLong("last_load_more_time", 0L)
+        val lastLoadMore = prefs.getLong("last_load_more", 0L)
         val elapsed = System.currentTimeMillis() - lastLoadMore
 
         if (elapsed < LOAD_MORE_INTERVAL_MS) {
-            val remainingMs = LOAD_MORE_INTERVAL_MS - elapsed
-            val remainingSec = (remainingMs / 1000).toInt()
-            val minutes = remainingSec / 60
-            val seconds = remainingSec % 60
-            val timeText = if (minutes > 0) "$minutes دقيقة و $seconds ثانية" else "$seconds ثانية"
-            _loadMoreMessage.value = "⏱️ انتظر $timeText قبل المحاولة مرة أخرى"
+            val remaining = LOAD_MORE_INTERVAL_MS - elapsed
+            _loadMoreMessage.value = "⏱️ انتظر ${formatRemaining(remaining)} قبل المحاولة مرة أخرى"
             return
         }
 
@@ -164,8 +179,7 @@ class MainViewModel(
                 nextPageUrl = nextUrl
                 _hasMorePosts.value = nextUrl != null
 
-                // ثبت زمان این لود
-                prefs.edit().putLong("last_load_more_time", System.currentTimeMillis()).apply()
+                prefs.edit().putLong("last_load_more", System.currentTimeMillis()).apply()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -174,25 +188,35 @@ class MainViewModel(
     }
 
     // ============================================================
-    // 🆕 دکمه Refresh: محدودیت ۱۳ دقیقه
+    // 🔄 دکمه Refresh: محدودیت ۲۰ دقیقه (مستقل از باز/بسته)
     // ============================================================
     fun forceRefresh() {
-        val lastRefresh = prefs.getLong("last_refresh_time", 0L)
+        val lastRefresh = prefs.getLong("last_manual_refresh", 0L)
         val elapsed = System.currentTimeMillis() - lastRefresh
 
         if (elapsed < REFRESH_INTERVAL_MS) {
-            val remainingMs = REFRESH_INTERVAL_MS - elapsed
-            val remainingSec = (remainingMs / 1000).toInt()
-            val minutes = remainingSec / 60
-            val seconds = remainingSec % 60
-            val timeText = if (minutes > 0) "$minutes دقيقة و $seconds ثانية" else "$seconds ثانية"
-            _refreshMessage.value = "⏱️ انتظر $timeText قبل التحديث"
+            val remaining = REFRESH_INTERVAL_MS - elapsed
+            _refreshMessage.value = "⏱️ انتظر ${formatRemaining(remaining)} قبل التحديث"
             return
         }
 
         _refreshMessage.value = null
-        prefs.edit().putLong("last_refresh_time", System.currentTimeMillis()).apply()
-        loadFirstPage()
+        prefs.edit().putLong("last_manual_refresh", System.currentTimeMillis()).apply()
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            try {
+                val (posts, nextUrl) = blogRepo.fetchFirstPage()
+                _allPosts.value = posts
+                nextPageUrl = nextUrl
+                _hasMorePosts.value = nextUrl != null
+            } catch (e: Exception) {
+                _errorMessage.value = "❌ خطا: ${e.message}"
+                e.printStackTrace()
+            }
+            _isLoading.value = false
+        }
     }
 
     fun clearRefreshMessage() {
