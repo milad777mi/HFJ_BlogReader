@@ -26,7 +26,7 @@ class MainViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
-    private val blogRepo = BlogRepository()
+    private val blogRepo = BlogRepository(getApplication())
     private val fontManager = FontSizeManager(getApplication())
 
     val fontScale: StateFlow<Float> = fontManager.fontScale
