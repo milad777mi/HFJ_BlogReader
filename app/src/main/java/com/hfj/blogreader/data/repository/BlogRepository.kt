@@ -12,42 +12,68 @@ import org.jsoup.nodes.Document
 
 class BlogRepository(private val context: Context) {
 
-    // ✅ اصلاح شد: / در انتها
     private val baseUrl = "https://bllosoft-glade-6b08.bnmkiio180.workers.dev/"
     
     private val db = AppDatabase.getInstance(context)
     private val postDao = db.postDao()
 
-    // ⏱️ مدت کش: ۱۰ دقیقه
     private val CACHE_DURATION_MS = 10 * 60 * 1000L
 
-    /**
-     * ✅ بررسی می‌کنه که کش معتبره یا نه (کمتر از ۱۰ دقیقه گذشته)
-     */
+    // ============================================================
+    // ✅ جدید: خوندن config از meta tag صفحه اصلی
+    // برمی‌گردونه: Triple(appOpenMin, refreshMin, loadMoreMin) یا null
+    // ============================================================
+    suspend fun fetchConfig(): Triple<Int, Int, Int>? = withContext(Dispatchers.IO) {
+        try {
+            val doc = Jsoup.connect(baseUrl)
+                .timeout(10000)
+                .userAgent("Mozilla/5.0")
+                .ignoreContentType(true)
+                .ignoreHttpErrors(true)
+                .get()
+
+            val meta = doc.select("meta[name=hfj-config]").first() ?: return@withContext null
+            val json = meta.attr("content")
+            if (json.isBlank()) return@withContext null
+
+            val appOpen = extractIntFromJson(json, "appOpenInterval")
+            val refresh = extractIntFromJson(json, "refreshInterval")
+            val loadMore = extractIntFromJson(json, "loadMoreInterval")
+
+            if (appOpen > 0 && refresh > 0 && loadMore > 0) {
+                Triple(appOpen, refresh, loadMore)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    // ✅ استخراج عدد از JSON ساده (بدون کتابخانه)
+    private fun extractIntFromJson(json: String, key: String): Int {
+        val pattern = "\"$key\"\\s*:\\s*(\\d+)".toRegex()
+        val match = pattern.find(json) ?: return 0
+        return match.groupValues[1].toIntOrNull() ?: 0
+    }
+
     suspend fun isCacheValid(): Boolean {
         val lastCacheTime = postDao.getLatestCacheTime() ?: return false
         val elapsed = System.currentTimeMillis() - lastCacheTime
         return elapsed < CACHE_DURATION_MS
     }
 
-    /**
-     * ✅ فقط از دیتابیس محلی می‌خونه (بدون درخواست به سرور)
-     */
     suspend fun getCachedPosts(): List<Post> = withContext(Dispatchers.IO) {
         postDao.getAllPosts().map { it.toPost() }
     }
 
-    /**
-     * ✅ فقط صفحه اول رو از سرور می‌گیره و توی دیتابیس ذخیره می‌کنه
-     * @return لیست پست‌های صفحه اول + آدرس صفحه بعد (اگه وجود داشته باشه)
-     */
     suspend fun fetchFirstPage(): Pair<List<Post>, String?> = withContext(Dispatchers.IO) {
         val doc = fetchDocument(baseUrl)
         val posts = extractPosts(doc)
         val nextLink = doc.select("a.nextlink").first()?.attr("href")
             ?.let { buildNextUrl(it) }
 
-        // ذخیره توی دیتابیس
         if (posts.isNotEmpty()) {
             postDao.insertPosts(posts.map { PostEntity.fromPost(it) })
         }
@@ -55,11 +81,6 @@ class BlogRepository(private val context: Context) {
         posts to nextLink
     }
 
-    /**
-     * ✅ صفحه بعد رو از سرور می‌گیره (برای اسکرول بی‌نهایت)
-     * @param nextUrl آدرس صفحه بعد
-     * @return لیست پست‌ها + آدرس صفحه بعدی
-     */
     suspend fun fetchNextPage(nextUrl: String): Pair<List<Post>, String?> = withContext(Dispatchers.IO) {
         val doc = fetchDocument(nextUrl)
         val posts = extractPosts(doc)
@@ -73,9 +94,6 @@ class BlogRepository(private val context: Context) {
         posts to nextLink
     }
 
-    /**
-     * ✅ API قدیمی (برای سازگاری با MainViewModel فعلی)
-     */
     suspend fun fetchAllPosts(): List<Post> = withContext(Dispatchers.IO) {
         if (isCacheValid()) {
             val cached = postDao.getAllPosts()
@@ -110,33 +128,20 @@ class BlogRepository(private val context: Context) {
         allPosts
     }
 
-    /**
-     * ✅ فقط وقتی به سرور درخواست بزن که کش منقضی شده باشه
-     */
     suspend fun refreshPosts(): List<Post> = withContext(Dispatchers.IO) {
         fetchAllPosts()
     }
 
-    /**
-     * ✅ پاک کردن کش (اختیاری)
-     */
     suspend fun clearCache() = withContext(Dispatchers.IO) {
         postDao.clearAll()
     }
 
     // ---------- متدهای داخلی ----------
 
-    /**
-     * ✅ ساخت URL بعدی به صورت مطمئن
-     * این تابع مطمئن می‌شه که URL درست ساخته بشه
-     */
     private fun buildNextUrl(href: String): String {
         return when {
-            // اگه href خودش کامل باشه (http یا https)
             href.startsWith("http://") || href.startsWith("https://") -> href
-            // اگه href با / شروع بشه
             href.startsWith("/") -> baseUrl.trimEnd('/') + href
-            // اگه href با ? شروع بشه (مثل ?p=2)
             else -> baseUrl + href
         }
     }
