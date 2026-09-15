@@ -2,6 +2,7 @@ package com.hfj.blogreader.viewmodel
 
 import android.app.Application
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hfj.blogreader.data.models.Post
@@ -29,6 +30,13 @@ class MainViewModel(
     private val blogRepo = BlogRepository(getApplication())
     private val fontManager = FontSizeManager(getApplication())
 
+    // ⏱️ ۱۳ دقیقه برای رفرش هوشمند (طبق درخواستت)
+    private val REFRESH_INTERVAL_MS = 13 * 60 * 1000L
+
+    // SharedPreferences برای ثبت زمان آخرین رفرش دستی
+    private val prefs: SharedPreferences =
+        getApplication<Application>().getSharedPreferences("blog_prefs", Context.MODE_PRIVATE)
+
     val fontScale: StateFlow<Float> = fontManager.fontScale
     fun setFontScale(scale: Float) {
         fontManager.setFontScale(scale)
@@ -39,6 +47,21 @@ class MainViewModel(
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    // 🆕 برای لود شدن صفحه بعد (پایین لیست)
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
+
+    // 🆕 آدرس صفحه بعد (برای اسکرول بی‌نهایت)
+    private var nextPageUrl: String? = null
+
+    // 🆕 آیا صفحه بعدی وجود داره؟
+    private val _hasMorePosts = MutableStateFlow(true)
+    val hasMorePosts: StateFlow<Boolean> = _hasMorePosts
+
+    // 🆕 پیام Pull-to-Refresh (اگه ۱۳ دقیقه نگذشته باشه)
+    private val _refreshMessage = MutableStateFlow<String?>(null)
+    val refreshMessage: StateFlow<String?> = _refreshMessage
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
@@ -59,35 +82,116 @@ class MainViewModel(
     private val _comments = MutableStateFlow<Map<String, List<Comment>>>(emptyMap())
     val comments: StateFlow<Map<String, List<Comment>>> = _comments
 
-    // ✅ Ads (کارت تبلیغاتی تصویری Worker)
+    // ✅ Ads
     private val _adData = MutableStateFlow<AdData?>(null)
     val adData: StateFlow<AdData?> = _adData
 
-    // ✅ Eitaa (کارت ایتا)
+    // ✅ Eitaa
     private val _eitaaPost = MutableStateFlow<EitaaPost?>(null)
     val eitaaPost: StateFlow<EitaaPost?> = _eitaaPost
 
-    // ✅ AdText (کارت تبلیغات متنی - ۲ پیام از کانال تلگرام)
+    // ✅ AdText
     private val _adTextItems = MutableStateFlow<List<AdTextItem>>(emptyList())
     val adTextItems: StateFlow<List<AdTextItem>> = _adTextItems
 
-    fun fetchAllPosts() {
+    // ============================================================
+    // 🆕 لود صفحه اول (برای init و Pull-to-Refresh)
+    // ============================================================
+    fun loadFirstPage() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val posts = blogRepo.fetchAllPosts()
+                val (posts, nextUrl) = blogRepo.fetchFirstPage()
                 _allPosts.value = posts
+                nextPageUrl = nextUrl
+                _hasMorePosts.value = nextUrl != null
+
                 if (posts.isEmpty()) {
                     _errorMessage.value = "⚠️ هیچ پستی یافت نشد"
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "❌ خطا: ${e.message}"
-                _allPosts.value = emptyList()
+                // اگه خطای شبکه داد، از کش بخون
+                val cached = blogRepo.getCachedPosts()
+                if (cached.isNotEmpty()) {
+                    _allPosts.value = cached
+                } else {
+                    _errorMessage.value = "❌ خطا: ${e.message}"
+                    _allPosts.value = emptyList()
+                }
                 e.printStackTrace()
             }
             _isLoading.value = false
         }
+    }
+
+    // ============================================================
+    // 🆕 لود صفحه بعد (برای اسکرول بی‌نهایت)
+    // ============================================================
+    fun loadMorePosts() {
+        // اگه در حال لود هستیم یا صفحه بعدی نیست، کاری نکن
+        if (_isLoadingMore.value || !_hasMorePosts.value) return
+        val url = nextPageUrl ?: return
+
+        viewModelScope.launch {
+            _isLoadingMore.value = true
+            try {
+                val (newPosts, nextUrl) = blogRepo.fetchNextPage(url)
+
+                // اضافه کردن به لیست فعلی (بدون تکرار)
+                val currentIds = _allPosts.value.map { it.id }.toSet()
+                val uniqueNewPosts = newPosts.filter { it.id !in currentIds }
+
+                _allPosts.value = _allPosts.value + uniqueNewPosts
+                nextPageUrl = nextUrl
+                _hasMorePosts.value = nextUrl != null
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            _isLoadingMore.value = false
+        }
+    }
+
+    // ============================================================
+    // 🆕 Pull-to-Refresh هوشمند (۱۳ دقیقه)
+    // ============================================================
+    fun smartRefresh() {
+        val lastRefresh = prefs.getLong("last_refresh_time", 0L)
+        val elapsed = System.currentTimeMillis() - lastRefresh
+
+        if (elapsed < REFRESH_INTERVAL_MS) {
+            // ⏱️ ۱۳ دقیقه نگذشته → پیام بده
+            val remainingMs = REFRESH_INTERVAL_MS - elapsed
+            val remainingMin = (remainingMs / 60000).toInt()
+            val remainingSec = ((remainingMs % 60000) / 1000).toInt()
+            _refreshMessage.value = "⏱️ لطفاً $remainingMin دقیقه و $remainingSec ثانیه دیگر صبر کنید"
+            return
+        }
+
+        // ✅ ۱۳ دقیقه گذشته → رفرش کن
+        _refreshMessage.value = null
+        prefs.edit().putLong("last_refresh_time", System.currentTimeMillis()).apply()
+        loadFirstPage()
+    }
+
+    // ============================================================
+    // ✅ دکمه Refresh توی TopAppBar (بدون محدودیت زمانی)
+    // ============================================================
+    fun forceRefresh() {
+        _refreshMessage.value = null
+        prefs.edit().putLong("last_refresh_time", System.currentTimeMillis()).apply()
+        loadFirstPage()
+    }
+
+    fun clearRefreshMessage() {
+        _refreshMessage.value = null
+    }
+
+    // ============================================================
+    // 🔄 حفظ تابع قدیمی برای سازگاری (اگه جایی صداش زدی)
+    // ============================================================
+    fun fetchAllPosts() {
+        loadFirstPage()
     }
 
     fun incrementStats(context: Context) {
@@ -181,7 +285,7 @@ class MainViewModel(
         }
     }
 
-    // ✅ Ad functions (کارت تبلیغاتی تصویری Worker)
+    // ✅ Ad functions
     fun loadAdData() {
         viewModelScope.launch {
             try {
@@ -194,7 +298,7 @@ class MainViewModel(
         }
     }
 
-    // ✅ Eitaa functions (کارت ایتا)
+    // ✅ Eitaa functions
     fun loadEitaaPost() {
         viewModelScope.launch {
             try {
@@ -207,7 +311,7 @@ class MainViewModel(
         }
     }
 
-    // ✅ AdText functions (کارت تبلیغات متنی - ۲ پیام از کانال تلگرام)
+    // ✅ AdText functions
     fun loadAdTextItems() {
         viewModelScope.launch {
             try {
@@ -221,10 +325,10 @@ class MainViewModel(
     }
 
     init {
-        // 1. مطالب وبلاگ (اول)
-        fetchAllPosts()
+        // 1. صفحه اول مطالب
+        loadFirstPage()
 
-        // 2. کارت‌ها فقط یک بار هنگام ساخت ViewModel (با تأخیر ترتیبی)
+        // 2. کارت‌های تبلیغاتی (بدون تغییر)
         viewModelScope.launch {
             delay(500)
             loadAdTextItems()
