@@ -30,10 +30,10 @@ class MainViewModel(
     private val blogRepo = BlogRepository(getApplication())
     private val fontManager = FontSizeManager(getApplication())
 
-    // ⏱️ محدودیت‌ها (سه تایمر مستقل)
-    private val APP_OPEN_INTERVAL_MS  = 13 * 60 * 1000L   // باز/بسته اپ: ۱۳ دقیقه
-    private val REFRESH_INTERVAL_MS   = 20 * 60 * 1000L   // دکمه Refresh: ۲۰ دقیقه
-    private val LOAD_MORE_INTERVAL_MS =  3 * 60 * 1000L   // نمایش بیشتر: ۳ دقیقه
+    // ⏱️ محدودیت‌ها
+    private val APP_OPEN_INTERVAL_MS  = 13 * 60 * 1000L
+    private val REFRESH_INTERVAL_MS   = 20 * 60 * 1000L
+    private val LOAD_MORE_INTERVAL_MS =  3 * 60 * 1000L
 
     private val prefs: SharedPreferences =
         getApplication<Application>().getSharedPreferences("blog_prefs", Context.MODE_PRIVATE)
@@ -52,9 +52,10 @@ class MainViewModel(
     private val _isLoadingMore = MutableStateFlow(false)
     val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
 
-    private var nextPageUrl: String? = null
+    // ✅ nextPageUrl حالا از SharedPreferences خونده می‌شه
+    private var nextPageUrl: String? = prefs.getString("next_page_url", null)
 
-    private val _hasMorePosts = MutableStateFlow(true)
+    private val _hasMorePosts = MutableStateFlow(prefs.getString("next_page_url", null) != null)
     val hasMorePosts: StateFlow<Boolean> = _hasMorePosts
 
     private val _loadMoreMessage = MutableStateFlow<String?>(null)
@@ -71,18 +72,15 @@ class MainViewModel(
     private val _stats = MutableStateFlow(BlogStats())
     val stats: StateFlow<BlogStats> = _stats
 
-    // Likes
     private val _likes = MutableStateFlow<Map<String, Int>>(emptyMap())
     val likes: StateFlow<Map<String, Int>> = _likes
 
     private val _likedStatus = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val likedStatus: StateFlow<Map<String, Boolean>> = _likedStatus
 
-    // Comments
     private val _comments = MutableStateFlow<Map<String, List<Comment>>>(emptyMap())
     val comments: StateFlow<Map<String, List<Comment>>> = _comments
 
-    // Ads
     private val _adData = MutableStateFlow<AdData?>(null)
     val adData: StateFlow<AdData?> = _adData
 
@@ -93,8 +91,6 @@ class MainViewModel(
     val adTextItems: StateFlow<List<AdTextItem>> = _adTextItems
 
     // ============================================================
-    // 🔄 تابع کمکی: تبدیل میلی‌ثانیه به متن عربی
-    // ============================================================
     private fun formatRemaining(ms: Long): String {
         val totalSec = (ms / 1000).toInt()
         val min = totalSec / 60
@@ -103,7 +99,7 @@ class MainViewModel(
     }
 
     // ============================================================
-    // 📱 لود اولیه (باز/بسته اپ): محدودیت ۱۳ دقیقه
+    // 📱 لود اولیه (باز/بسته اپ)
     // ============================================================
     fun loadFirstPage() {
         viewModelScope.launch {
@@ -119,6 +115,9 @@ class MainViewModel(
                 val cached = blogRepo.getCachedPosts()
                 if (cached.isNotEmpty()) {
                     _allPosts.value = cached
+                    // ✅ nextPageUrl رو از SharedPreferences بخون
+                    nextPageUrl = prefs.getString("next_page_url", null)
+                    _hasMorePosts.value = nextPageUrl != null
                     _isLoading.value = false
                     return@launch
                 }
@@ -131,7 +130,11 @@ class MainViewModel(
                 nextPageUrl = nextUrl
                 _hasMorePosts.value = nextUrl != null
 
-                prefs.edit().putLong("last_app_open_fetch", System.currentTimeMillis()).apply()
+                // ✅ ذخیره nextPageUrl و زمان
+                prefs.edit()
+                    .putString("next_page_url", nextUrl)
+                    .putLong("last_app_open_fetch", System.currentTimeMillis())
+                    .apply()
 
                 if (posts.isEmpty()) {
                     _errorMessage.value = "⚠️ هیچ پستی یافت نشد"
@@ -140,6 +143,8 @@ class MainViewModel(
                 val cached = blogRepo.getCachedPosts()
                 if (cached.isNotEmpty()) {
                     _allPosts.value = cached
+                    nextPageUrl = prefs.getString("next_page_url", null)
+                    _hasMorePosts.value = nextPageUrl != null
                 } else {
                     _errorMessage.value = "❌ خطا: ${e.message}"
                     _allPosts.value = emptyList()
@@ -151,11 +156,13 @@ class MainViewModel(
     }
 
     // ============================================================
-    // 📥 نمایش بیشتر: محدودیت ۳ دقیقه (مستقل)
+    // 📥 نمایش بیشتر
     // ============================================================
     fun loadMorePosts() {
         if (_isLoadingMore.value || !_hasMorePosts.value) return
-        val url = nextPageUrl ?: return
+        
+        // ✅ همیشه از SharedPreferences بخون (نه از حافظه)
+        val url = prefs.getString("next_page_url", null) ?: return
 
         val lastLoadMore = prefs.getLong("last_load_more", 0L)
         val elapsed = System.currentTimeMillis() - lastLoadMore
@@ -179,7 +186,11 @@ class MainViewModel(
                 nextPageUrl = nextUrl
                 _hasMorePosts.value = nextUrl != null
 
-                prefs.edit().putLong("last_load_more", System.currentTimeMillis()).apply()
+                // ✅ ذخیره nextPageUrl جدید و زمان
+                prefs.edit()
+                    .putString("next_page_url", nextUrl)
+                    .putLong("last_load_more", System.currentTimeMillis())
+                    .apply()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -188,7 +199,7 @@ class MainViewModel(
     }
 
     // ============================================================
-    // 🔄 دکمه Refresh: محدودیت ۲۰ دقیقه (مستقل از باز/بسته)
+    // 🔄 دکمه Refresh
     // ============================================================
     fun forceRefresh() {
         val lastRefresh = prefs.getLong("last_manual_refresh", 0L)
@@ -211,6 +222,11 @@ class MainViewModel(
                 _allPosts.value = posts
                 nextPageUrl = nextUrl
                 _hasMorePosts.value = nextUrl != null
+
+                // ✅ ذخیره nextPageUrl
+                prefs.edit()
+                    .putString("next_page_url", nextUrl)
+                    .apply()
             } catch (e: Exception) {
                 _errorMessage.value = "❌ خطا: ${e.message}"
                 e.printStackTrace()
@@ -227,7 +243,6 @@ class MainViewModel(
         _loadMoreMessage.value = null
     }
 
-    // سازگاری با کد قدیم
     fun fetchAllPosts() {
         loadFirstPage()
     }
@@ -254,7 +269,6 @@ class MainViewModel(
         }
     }
 
-    // Like functions
     fun getLikeCount(postId: String): Int = _likes.value[postId] ?: 0
     fun isLiked(postId: String): Boolean = _likedStatus.value[postId] ?: false
 
@@ -296,7 +310,6 @@ class MainViewModel(
         }
     }
 
-    // Comment functions
     fun loadComments(postId: String) {
         viewModelScope.launch {
             try {
@@ -314,16 +327,13 @@ class MainViewModel(
         viewModelScope.launch {
             try {
                 val success = CommentManager.submitComment(postId, userId, userName, text)
-                if (success) {
-                    // نظر برای تایید ارسال شد
-                }
+                if (success) { }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
 
-    // Ad functions
     fun loadAdData() {
         viewModelScope.launch {
             try {
