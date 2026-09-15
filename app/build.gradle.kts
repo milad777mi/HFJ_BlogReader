@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -89,7 +90,7 @@ dependencies {
 
     // ✅ Coil (نمایش تصاویر و پشتیبانی از GIF)
     implementation("io.coil-kt:coil-compose:2.6.0")
-    implementation("io.coil-kt:coil-gif:2.6.0")  // ← اضافه شده برای پشتیبانی از GIF
+    implementation("io.coil-kt:coil-gif:2.6.0")
 
     // ExoPlayer (پخش فیلم)
     implementation("androidx.media3:media3-exoplayer:1.3.1")
@@ -98,6 +99,11 @@ dependencies {
 
     // SharedPreferences
     implementation("androidx.preference:preference-ktx:1.2.1")
+
+    // 🆕 Room (دیتابیس محلی)
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
