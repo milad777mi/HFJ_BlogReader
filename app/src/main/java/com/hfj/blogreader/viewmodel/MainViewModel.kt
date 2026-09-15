@@ -30,9 +30,10 @@ class MainViewModel(
     private val blogRepo = BlogRepository(getApplication())
     private val fontManager = FontSizeManager(getApplication())
 
-    private val APP_OPEN_INTERVAL_MS  = 10 * 60 * 1000L
-    private val REFRESH_INTERVAL_MS   = 5 * 60 * 1000L
-    private val LOAD_MORE_INTERVAL_MS =  1 * 60 * 1000L
+    // ✅ پیش‌فرض‌های جدید (دقیقه → میلی‌ثانیه)
+    private var APP_OPEN_INTERVAL_MS  = 17 * 60 * 1000L
+    private var REFRESH_INTERVAL_MS   = 13 * 60 * 1000L
+    private var LOAD_MORE_INTERVAL_MS =  5 * 60 * 1000L
 
     private val prefs: SharedPreferences =
         getApplication<Application>().getSharedPreferences("blog_prefs", Context.MODE_PRIVATE)
@@ -103,6 +104,45 @@ class MainViewModel(
             editor.putString("next_page_url", url)
         }
         editor.apply()
+    }
+
+    // ============================================================
+    // ✅ جدید: لود config از Worker (با fallback)
+    //   ۱. اگه Worker در دسترس بود → از Worker
+    //   ۲. اگه نبود → از prefs (مقدار قبلی)
+    //   ۳. اگه prefs هم خالی بود → پیش‌فرض کد (۱۷، ۱۳، ۵)
+    // ============================================================
+    private fun loadConfigFromServer() {
+        viewModelScope.launch {
+            try {
+                val config = blogRepo.fetchConfig()
+                if (config != null) {
+                    // ✅ Worker پاسخ داد
+                    APP_OPEN_INTERVAL_MS  = config.first * 60 * 1000L
+                    REFRESH_INTERVAL_MS   = config.second * 60 * 1000L
+                    LOAD_MORE_INTERVAL_MS = config.third * 60 * 1000L
+
+                    // ذخیره توی prefs
+                    prefs.edit()
+                        .putLong("cfg_app_open", APP_OPEN_INTERVAL_MS)
+                        .putLong("cfg_refresh", REFRESH_INTERVAL_MS)
+                        .putLong("cfg_load_more", LOAD_MORE_INTERVAL_MS)
+                        .apply()
+                } else {
+                    // ❌ Worker پاسخ نداد → از prefs
+                    loadConfigFromPrefs()
+                }
+            } catch (e: Exception) {
+                // ❌ خطا → از prefs
+                loadConfigFromPrefs()
+            }
+        }
+    }
+
+    private fun loadConfigFromPrefs() {
+        APP_OPEN_INTERVAL_MS  = prefs.getLong("cfg_app_open",  17 * 60 * 1000L)
+        REFRESH_INTERVAL_MS   = prefs.getLong("cfg_refresh",   13 * 60 * 1000L)
+        LOAD_MORE_INTERVAL_MS = prefs.getLong("cfg_load_more",  5 * 60 * 1000L)
     }
 
     // ============================================================
@@ -369,9 +409,21 @@ class MainViewModel(
         }
     }
 
+    // ============================================================
+    // init: ترتیب اجرا
+    //   ۱. اول از prefs بخون (سریع) — تایمرها آماده بشن
+    //   ۲. بعد مطالب
+    //   ۳. بعد کارت‌های تبلیغاتی
+    //   ۴. بعد از ۲ ثانیه، config رو از Worker بگیر
+    // ============================================================
     init {
+        // ۱. اول config از prefs (فوری)
+        loadConfigFromPrefs()
+
+        // ۲. مطالب
         loadFirstPage()
 
+        // ۳. کارت‌های تبلیغاتی
         viewModelScope.launch {
             delay(500)
             loadAdTextItems()
@@ -381,6 +433,12 @@ class MainViewModel(
 
             delay(300)
             loadEitaaPost()
+        }
+
+        // ۴. بعد از ۲ ثانیه، config از Worker (با تأخیر تا مطالب سریع بیان)
+        viewModelScope.launch {
+            delay(2000)
+            loadConfigFromServer()
         }
     }
 }
