@@ -30,7 +30,6 @@ class MainViewModel(
     private val blogRepo = BlogRepository(getApplication())
     private val fontManager = FontSizeManager(getApplication())
 
-    // ⏱️ محدودیت‌ها
     private val APP_OPEN_INTERVAL_MS  = 13 * 60 * 1000L
     private val REFRESH_INTERVAL_MS   = 20 * 60 * 1000L
     private val LOAD_MORE_INTERVAL_MS =  3 * 60 * 1000L
@@ -52,10 +51,9 @@ class MainViewModel(
     private val _isLoadingMore = MutableStateFlow(false)
     val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
 
-    // ✅ nextPageUrl حالا از SharedPreferences خونده می‌شه
     private var nextPageUrl: String? = prefs.getString("next_page_url", null)
 
-    private val _hasMorePosts = MutableStateFlow(prefs.getString("next_page_url", null) != null)
+    private val _hasMorePosts = MutableStateFlow(!prefs.getString("next_page_url", null).isNullOrBlank())
     val hasMorePosts: StateFlow<Boolean> = _hasMorePosts
 
     private val _loadMoreMessage = MutableStateFlow<String?>(null)
@@ -90,7 +88,6 @@ class MainViewModel(
     private val _adTextItems = MutableStateFlow<List<AdTextItem>>(emptyList())
     val adTextItems: StateFlow<List<AdTextItem>> = _adTextItems
 
-    // ============================================================
     private fun formatRemaining(ms: Long): String {
         val totalSec = (ms / 1000).toInt()
         val min = totalSec / 60
@@ -98,8 +95,19 @@ class MainViewModel(
         return if (min > 0) "$min دقيقة و $sec ثانية" else "$sec ثانية"
     }
 
+    // ✅ تابع جدید: ذخیره یا حذف next_page_url به صورت مطمئن
+    private fun saveNextPageUrl(url: String?) {
+        val editor = prefs.edit()
+        if (url.isNullOrBlank()) {
+            editor.remove("next_page_url")
+        } else {
+            editor.putString("next_page_url", url)
+        }
+        editor.apply()
+    }
+
     // ============================================================
-    // 📱 لود اولیه (باز/بسته اپ)
+    // 📱 لود اولیه
     // ============================================================
     fun loadFirstPage() {
         viewModelScope.launch {
@@ -110,31 +118,25 @@ class MainViewModel(
             val elapsed = System.currentTimeMillis() - lastFetch
             val isCacheValid = elapsed < APP_OPEN_INTERVAL_MS
 
-            // 1️⃣ اگه کمتر از ۱۳ دقیقه → از Room بخون
             if (isCacheValid) {
                 val cached = blogRepo.getCachedPosts()
                 if (cached.isNotEmpty()) {
                     _allPosts.value = cached
-                    // ✅ nextPageUrl رو از SharedPreferences بخون
                     nextPageUrl = prefs.getString("next_page_url", null)
-                    _hasMorePosts.value = nextPageUrl != null
+                    _hasMorePosts.value = !nextPageUrl.isNullOrBlank()
                     _isLoading.value = false
                     return@launch
                 }
             }
 
-            // 2️⃣ وگرنه از Worker بگیر
             try {
                 val (posts, nextUrl) = blogRepo.fetchFirstPage()
                 _allPosts.value = posts
                 nextPageUrl = nextUrl
-                _hasMorePosts.value = nextUrl != null
+                _hasMorePosts.value = !nextUrl.isNullOrBlank()
 
-                // ✅ ذخیره nextPageUrl و زمان
-                prefs.edit()
-                    .putString("next_page_url", nextUrl)
-                    .putLong("last_app_open_fetch", System.currentTimeMillis())
-                    .apply()
+                saveNextPageUrl(nextUrl)
+                prefs.edit().putLong("last_app_open_fetch", System.currentTimeMillis()).apply()
 
                 if (posts.isEmpty()) {
                     _errorMessage.value = "⚠️ هیچ پستی یافت نشد"
@@ -144,7 +146,7 @@ class MainViewModel(
                 if (cached.isNotEmpty()) {
                     _allPosts.value = cached
                     nextPageUrl = prefs.getString("next_page_url", null)
-                    _hasMorePosts.value = nextPageUrl != null
+                    _hasMorePosts.value = !nextPageUrl.isNullOrBlank()
                 } else {
                     _errorMessage.value = "❌ خطا: ${e.message}"
                     _allPosts.value = emptyList()
@@ -159,10 +161,14 @@ class MainViewModel(
     // 📥 نمایش بیشتر
     // ============================================================
     fun loadMorePosts() {
-        if (_isLoadingMore.value || !_hasMorePosts.value) return
+        if (_isLoadingMore.value) return
+        if (!_hasMorePosts.value) return
         
-        // ✅ همیشه از SharedPreferences بخون (نه از حافظه)
-        val url = prefs.getString("next_page_url", null) ?: return
+        val url = prefs.getString("next_page_url", null)
+        if (url.isNullOrBlank()) {
+            _hasMorePosts.value = false
+            return
+        }
 
         val lastLoadMore = prefs.getLong("last_load_more", 0L)
         val elapsed = System.currentTimeMillis() - lastLoadMore
@@ -184,13 +190,10 @@ class MainViewModel(
 
                 _allPosts.value = _allPosts.value + uniqueNewPosts
                 nextPageUrl = nextUrl
-                _hasMorePosts.value = nextUrl != null
+                _hasMorePosts.value = !nextUrl.isNullOrBlank()
 
-                // ✅ ذخیره nextPageUrl جدید و زمان
-                prefs.edit()
-                    .putString("next_page_url", nextUrl)
-                    .putLong("last_load_more", System.currentTimeMillis())
-                    .apply()
+                saveNextPageUrl(nextUrl)
+                prefs.edit().putLong("last_load_more", System.currentTimeMillis()).apply()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -221,12 +224,9 @@ class MainViewModel(
                 val (posts, nextUrl) = blogRepo.fetchFirstPage()
                 _allPosts.value = posts
                 nextPageUrl = nextUrl
-                _hasMorePosts.value = nextUrl != null
+                _hasMorePosts.value = !nextUrl.isNullOrBlank()
 
-                // ✅ ذخیره nextPageUrl
-                prefs.edit()
-                    .putString("next_page_url", nextUrl)
-                    .apply()
+                saveNextPageUrl(nextUrl)
             } catch (e: Exception) {
                 _errorMessage.value = "❌ خطا: ${e.message}"
                 e.printStackTrace()
