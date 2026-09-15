@@ -60,7 +60,9 @@ fun HomeScreen(
         } catch (e: Exception) { }
     }
 
-    // نمایش پیام Refresh
+    // ============================================================
+    // نمایش پیام Refresh (دکمه بالا-راست)
+    // ============================================================
     LaunchedEffect(refreshMessage) {
         refreshMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
@@ -68,7 +70,9 @@ fun HomeScreen(
         }
     }
 
-    // نمایش پیام Load More
+    // ============================================================
+    // نمایش پیام Load More (دکمه «نمایش بیشتر»)
+    // ============================================================
     LaunchedEffect(loadMoreMessage) {
         loadMoreMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
@@ -88,7 +92,11 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.forceRefresh() }) {
+                    // ✅ تغییر: قبل از forceRefresh، پیام قبلی رو پاک کن
+                    IconButton(onClick = {
+                        viewModel.clearRefreshMessage()
+                        viewModel.forceRefresh()
+                    }) {
                         Icon(Icons.Default.Refresh, contentDescription = "تحديث")
                     }
                     IconButton(onClick = { navController.navigate("settings") }) {
@@ -131,7 +139,11 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = { viewModel.forceRefresh() }) {
+                            // ✅ تغییر: قبل از forceRefresh، پیام قبلی رو پاک کن
+                            Button(onClick = {
+                                viewModel.clearRefreshMessage()
+                                viewModel.forceRefresh()
+                            }) {
                                 Text("🔄 إعادة المحاولة")
                             }
                         }
@@ -277,7 +289,7 @@ fun HomeScreen(
                         }
 
                         // ============================================
-                        // 🆕 دکمه «نمایش مطالب بیشتر» (به جای اسکرول خودکار)
+                        // دکمه «نمایش مطالب بیشتر»
                         // ============================================
                         if (hasMorePosts) {
                             item(key = "load_more_button") {
@@ -288,7 +300,6 @@ fun HomeScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (isLoadingMore) {
-                                        // حالت در حال لود
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.Center
@@ -305,9 +316,11 @@ fun HomeScreen(
                                             )
                                         }
                                     } else {
-                                        // دکمه عادی
                                         Button(
-                                            onClick = { viewModel.loadMorePosts() },
+                                            onClick = {
+                                                viewModel.clearLoadMoreMessage()
+                                                viewModel.loadMorePosts()
+                                            },
                                             shape = RoundedCornerShape(14.dp),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = MaterialTheme.colorScheme.primary
