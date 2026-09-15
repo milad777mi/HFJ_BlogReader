@@ -40,6 +40,7 @@ fun HomeScreen(
     val hasMorePosts by viewModel.hasMorePosts.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val refreshMessage by viewModel.refreshMessage.collectAsState()
+    val loadMoreMessage by viewModel.loadMoreMessage.collectAsState()
     val fontScale = LocalFontScale.current
 
     val adData by viewModel.adData.collectAsState()
@@ -59,29 +60,19 @@ fun HomeScreen(
         } catch (e: Exception) { }
     }
 
-    // ============================================================
-    // 🆕 اسکرول بی‌نهایت: وقتی به ۳ آیتم آخر رسیدیم، صفحه بعد رو لود کن
-    // ============================================================
-    LaunchedEffect(listState, posts.size, hasMorePosts) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            totalItems > 0 && lastVisibleIndex >= totalItems - 3
-        }.collect { shouldLoadMore ->
-            if (shouldLoadMore && hasMorePosts && !isLoadingMore && !isLoading) {
-                viewModel.loadMorePosts()
-            }
-        }
-    }
-
-    // ============================================================
-    // 🆕 نمایش پیام Refresh (اگه ۱۳ دقیقه نگذشته باشه)
-    // ============================================================
+    // نمایش پیام Refresh
     LaunchedEffect(refreshMessage) {
         refreshMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
             viewModel.clearRefreshMessage()
+        }
+    }
+
+    // نمایش پیام Load More
+    LaunchedEffect(loadMoreMessage) {
+        loadMoreMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            viewModel.clearLoadMoreMessage()
         }
     }
 
@@ -153,9 +144,7 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // ============================================
                         // کارت‌های تبلیغات متنی
-                        // ============================================
                         items(
                             items = adTextItems,
                             key = { "adtext_${it.id}" }
@@ -192,9 +181,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // ============================================
                         // کارت تبلیغاتی تصویری
-                        // ============================================
                         if (ad != null && !ad.imageUrl.isNullOrEmpty()) {
                             item(key = "ad_banner") {
                                 Card(
@@ -242,9 +229,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // ============================================
                         // کارت ایتا
-                        // ============================================
                         if (eitaa != null && !eitaa.text.isNullOrBlank()) {
                             item(key = "eitaa_banner") {
                                 Card(
@@ -280,9 +265,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // ============================================
                         // لیست مطالب
-                        // ============================================
                         items(
                             items = posts,
                             key = { post -> "post_${post.id}" }
@@ -294,25 +277,56 @@ fun HomeScreen(
                         }
 
                         // ============================================
-                        // 🆕 اسپینر پایین لیست (موقع لود صفحه بعد)
+                        // 🆕 دکمه «نمایش مطالب بیشتر» (به جای اسکرول خودکار)
                         // ============================================
-                        if (isLoadingMore) {
-                            item(key = "loading_more") {
+                        if (hasMorePosts) {
+                            item(key = "load_more_button") {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp),
+                                        .padding(vertical = 16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                    if (isLoadingMore) {
+                                        // حالت در حال لود
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(20.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Text(
+                                                "⏳ جاري التحميل...",
+                                                fontSize = 15.sp * fontScale,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    } else {
+                                        // دکمه عادی
+                                        Button(
+                                            onClick = { viewModel.loadMorePosts() },
+                                            shape = RoundedCornerShape(14.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            modifier = Modifier.fillMaxWidth(0.7f)
+                                        ) {
+                                            Text(
+                                                "📥 عرض المزيد من المنشورات",
+                                                fontSize = 15.sp * fontScale,
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
 
-                        // ============================================
-                        // 🆕 پیام «پایان مطالب» (اگه صفحه بعدی نباشه)
-                        // ============================================
-                        if (!hasMorePosts && posts.isNotEmpty() && !isLoadingMore) {
+                        // پیام «پایان مطالب»
+                        if (!hasMorePosts && posts.isNotEmpty()) {
                             item(key = "end_of_posts") {
                                 Box(
                                     modifier = Modifier
