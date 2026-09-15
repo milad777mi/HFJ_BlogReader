@@ -12,7 +12,9 @@ import org.jsoup.nodes.Document
 
 class BlogRepository(private val context: Context) {
 
-    private val baseUrl = "https://bllosoft-glade-6b08.bnmkiio180.workers.dev"
+    // ✅ اصلاح شد: / در انتها
+    private val baseUrl = "https://bllosoft-glade-6b08.bnmkiio180.workers.dev/"
+    
     private val db = AppDatabase.getInstance(context)
     private val postDao = db.postDao()
 
@@ -43,7 +45,7 @@ class BlogRepository(private val context: Context) {
         val doc = fetchDocument(baseUrl)
         val posts = extractPosts(doc)
         val nextLink = doc.select("a.nextlink").first()?.attr("href")
-            ?.let { "$baseUrl$it" }
+            ?.let { buildNextUrl(it) }
 
         // ذخیره توی دیتابیس
         if (posts.isNotEmpty()) {
@@ -62,7 +64,7 @@ class BlogRepository(private val context: Context) {
         val doc = fetchDocument(nextUrl)
         val posts = extractPosts(doc)
         val nextLink = doc.select("a.nextlink").first()?.attr("href")
-            ?.let { "$baseUrl$it" }
+            ?.let { buildNextUrl(it) }
 
         if (posts.isNotEmpty()) {
             postDao.insertPosts(posts.map { PostEntity.fromPost(it) })
@@ -73,11 +75,8 @@ class BlogRepository(private val context: Context) {
 
     /**
      * ✅ API قدیمی (برای سازگاری با MainViewModel فعلی)
-     * اگه کش معتبره، از دیتابیس می‌خونه
-     * وگرنه همه صفحات رو می‌گیره (مثل قبل)
      */
     suspend fun fetchAllPosts(): List<Post> = withContext(Dispatchers.IO) {
-        // 1️⃣ اگه کش معتبره، از دیتابیس برگردون
         if (isCacheValid()) {
             val cached = postDao.getAllPosts()
             if (cached.isNotEmpty()) {
@@ -85,7 +84,6 @@ class BlogRepository(private val context: Context) {
             }
         }
 
-        // 2️⃣ وگرنه همه صفحات رو از سرور بگیر (رفتار قبلی)
         val allPosts = mutableListOf<Post>()
         var currentUrl: String? = baseUrl
 
@@ -96,7 +94,7 @@ class BlogRepository(private val context: Context) {
                 allPosts.addAll(posts)
 
                 val nextLink = doc.select("a.nextlink").first()?.attr("href")
-                currentUrl = nextLink?.let { "$baseUrl$it" }
+                currentUrl = nextLink?.let { buildNextUrl(it) }
 
                 delay(500)
             } catch (e: Exception) {
@@ -105,7 +103,6 @@ class BlogRepository(private val context: Context) {
             }
         }
 
-        // 3️⃣ ذخیره توی دیتابیس
         if (allPosts.isNotEmpty()) {
             postDao.insertPosts(allPosts.map { PostEntity.fromPost(it) })
         }
@@ -115,7 +112,6 @@ class BlogRepository(private val context: Context) {
 
     /**
      * ✅ فقط وقتی به سرور درخواست بزن که کش منقضی شده باشه
-     * برای Pull-to-Refresh هوشمند
      */
     suspend fun refreshPosts(): List<Post> = withContext(Dispatchers.IO) {
         fetchAllPosts()
@@ -129,6 +125,21 @@ class BlogRepository(private val context: Context) {
     }
 
     // ---------- متدهای داخلی ----------
+
+    /**
+     * ✅ ساخت URL بعدی به صورت مطمئن
+     * این تابع مطمئن می‌شه که URL درست ساخته بشه
+     */
+    private fun buildNextUrl(href: String): String {
+        return when {
+            // اگه href خودش کامل باشه (http یا https)
+            href.startsWith("http://") || href.startsWith("https://") -> href
+            // اگه href با / شروع بشه
+            href.startsWith("/") -> baseUrl.trimEnd('/') + href
+            // اگه href با ? شروع بشه (مثل ?p=2)
+            else -> baseUrl + href
+        }
+    }
 
     private suspend fun fetchDocument(url: String): Document = withContext(Dispatchers.IO) {
         Jsoup.connect(url)
