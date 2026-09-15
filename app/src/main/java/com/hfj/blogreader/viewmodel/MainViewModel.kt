@@ -30,10 +30,12 @@ class MainViewModel(
     private val blogRepo = BlogRepository(getApplication())
     private val fontManager = FontSizeManager(getApplication())
 
-    // ⏱️ ۱۳ دقیقه برای رفرش هوشمند (طبق درخواستت)
+    // ⏱️ محدودیت دکمه Refresh: ۱۳ دقیقه
     private val REFRESH_INTERVAL_MS = 13 * 60 * 1000L
 
-    // SharedPreferences برای ثبت زمان آخرین رفرش دستی
+    // ⏱️ محدودیت دکمه «نمایش بیشتر»: ۳ دقیقه
+    private val LOAD_MORE_INTERVAL_MS = 3 * 60 * 1000L
+
     private val prefs: SharedPreferences =
         getApplication<Application>().getSharedPreferences("blog_prefs", Context.MODE_PRIVATE)
 
@@ -48,18 +50,23 @@ class MainViewModel(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    // 🆕 برای لود شدن صفحه بعد (پایین لیست)
     private val _isLoadingMore = MutableStateFlow(false)
     val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
 
-    // 🆕 آدرس صفحه بعد (برای اسکرول بی‌نهایت)
     private var nextPageUrl: String? = null
 
-    // 🆕 آیا صفحه بعدی وجود داره؟
     private val _hasMorePosts = MutableStateFlow(true)
     val hasMorePosts: StateFlow<Boolean> = _hasMorePosts
 
-    // 🆕 پیام Pull-to-Refresh (اگه ۱۳ دقیقه نگذشته باشه)
+    // 🆕 آیا کاربر می‌تونه دکمه «نمایش بیشتر» رو بزنه؟ (۳ دقیقه)
+    private val _canLoadMore = MutableStateFlow(true)
+    val canLoadMore: StateFlow<Boolean> = _canLoadMore
+
+    // 🆕 متن پیام برای دکمه «نمایش بیشتر»
+    private val _loadMoreMessage = MutableStateFlow<String?>(null)
+    val loadMoreMessage: StateFlow<String?> = _loadMoreMessage
+
+    // 🆕 متن پیام برای دکمه Refresh
     private val _refreshMessage = MutableStateFlow<String?>(null)
     val refreshMessage: StateFlow<String?> = _refreshMessage
 
@@ -82,20 +89,18 @@ class MainViewModel(
     private val _comments = MutableStateFlow<Map<String, List<Comment>>>(emptyMap())
     val comments: StateFlow<Map<String, List<Comment>>> = _comments
 
-    // ✅ Ads
+    // Ads
     private val _adData = MutableStateFlow<AdData?>(null)
     val adData: StateFlow<AdData?> = _adData
 
-    // ✅ Eitaa
     private val _eitaaPost = MutableStateFlow<EitaaPost?>(null)
     val eitaaPost: StateFlow<EitaaPost?> = _eitaaPost
 
-    // ✅ AdText
     private val _adTextItems = MutableStateFlow<List<AdTextItem>>(emptyList())
     val adTextItems: StateFlow<List<AdTextItem>> = _adTextItems
 
     // ============================================================
-    // 🆕 لود صفحه اول (برای init و Pull-to-Refresh)
+    // لود صفحه اول
     // ============================================================
     fun loadFirstPage() {
         viewModelScope.launch {
@@ -106,12 +111,12 @@ class MainViewModel(
                 _allPosts.value = posts
                 nextPageUrl = nextUrl
                 _hasMorePosts.value = nextUrl != null
+                _canLoadMore.value = true  // اجازه لود صفحه بعد
 
                 if (posts.isEmpty()) {
                     _errorMessage.value = "⚠️ هیچ پستی یافت نشد"
                 }
             } catch (e: Exception) {
-                // اگه خطای شبکه داد، از کش بخون
                 val cached = blogRepo.getCachedPosts()
                 if (cached.isNotEmpty()) {
                     _allPosts.value = cached
@@ -126,25 +131,41 @@ class MainViewModel(
     }
 
     // ============================================================
-    // 🆕 لود صفحه بعد (برای اسکرول بی‌نهایت)
+    // 🆕 لود صفحه بعد (با محدودیت ۳ دقیقه) — فقط با دکمه
     // ============================================================
     fun loadMorePosts() {
-        // اگه در حال لود هستیم یا صفحه بعدی نیست، کاری نکن
         if (_isLoadingMore.value || !_hasMorePosts.value) return
         val url = nextPageUrl ?: return
 
+        // چک محدودیت ۳ دقیقه
+        val lastLoadMore = prefs.getLong("last_load_more_time", 0L)
+        val elapsed = System.currentTimeMillis() - lastLoadMore
+
+        if (elapsed < LOAD_MORE_INTERVAL_MS) {
+            val remainingMs = LOAD_MORE_INTERVAL_MS - elapsed
+            val remainingSec = (remainingMs / 1000).toInt()
+            val minutes = remainingSec / 60
+            val seconds = remainingSec % 60
+            val timeText = if (minutes > 0) "$minutes دقيقة و $seconds ثانية" else "$seconds ثانية"
+            _loadMoreMessage.value = "⏱️ انتظر $timeText قبل المحاولة مرة أخرى"
+            return
+        }
+
+        _loadMoreMessage.value = null
         viewModelScope.launch {
             _isLoadingMore.value = true
             try {
                 val (newPosts, nextUrl) = blogRepo.fetchNextPage(url)
 
-                // اضافه کردن به لیست فعلی (بدون تکرار)
                 val currentIds = _allPosts.value.map { it.id }.toSet()
                 val uniqueNewPosts = newPosts.filter { it.id !in currentIds }
 
                 _allPosts.value = _allPosts.value + uniqueNewPosts
                 nextPageUrl = nextUrl
                 _hasMorePosts.value = nextUrl != null
+
+                // ثبت زمان این لود
+                prefs.edit().putLong("last_load_more_time", System.currentTimeMillis()).apply()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -153,31 +174,22 @@ class MainViewModel(
     }
 
     // ============================================================
-    // 🆕 Pull-to-Refresh هوشمند (۱۳ دقیقه)
+    // 🆕 دکمه Refresh: محدودیت ۱۳ دقیقه
     // ============================================================
-    fun smartRefresh() {
+    fun forceRefresh() {
         val lastRefresh = prefs.getLong("last_refresh_time", 0L)
         val elapsed = System.currentTimeMillis() - lastRefresh
 
         if (elapsed < REFRESH_INTERVAL_MS) {
-            // ⏱️ ۱۳ دقیقه نگذشته → پیام بده
             val remainingMs = REFRESH_INTERVAL_MS - elapsed
-            val remainingMin = (remainingMs / 60000).toInt()
-            val remainingSec = ((remainingMs % 60000) / 1000).toInt()
-            _refreshMessage.value = "⏱️ لطفاً $remainingMin دقیقه و $remainingSec ثانیه دیگر صبر کنید"
+            val remainingSec = (remainingMs / 1000).toInt()
+            val minutes = remainingSec / 60
+            val seconds = remainingSec % 60
+            val timeText = if (minutes > 0) "$minutes دقيقة و $seconds ثانية" else "$seconds ثانية"
+            _refreshMessage.value = "⏱️ انتظر $timeText قبل التحديث"
             return
         }
 
-        // ✅ ۱۳ دقیقه گذشته → رفرش کن
-        _refreshMessage.value = null
-        prefs.edit().putLong("last_refresh_time", System.currentTimeMillis()).apply()
-        loadFirstPage()
-    }
-
-    // ============================================================
-    // ✅ دکمه Refresh توی TopAppBar (بدون محدودیت زمانی)
-    // ============================================================
-    fun forceRefresh() {
         _refreshMessage.value = null
         prefs.edit().putLong("last_refresh_time", System.currentTimeMillis()).apply()
         loadFirstPage()
@@ -187,9 +199,11 @@ class MainViewModel(
         _refreshMessage.value = null
     }
 
-    // ============================================================
-    // 🔄 حفظ تابع قدیمی برای سازگاری (اگه جایی صداش زدی)
-    // ============================================================
+    fun clearLoadMoreMessage() {
+        _loadMoreMessage.value = null
+    }
+
+    // سازگاری با کد قدیم
     fun fetchAllPosts() {
         loadFirstPage()
     }
@@ -285,7 +299,7 @@ class MainViewModel(
         }
     }
 
-    // ✅ Ad functions
+    // Ad functions
     fun loadAdData() {
         viewModelScope.launch {
             try {
@@ -298,7 +312,6 @@ class MainViewModel(
         }
     }
 
-    // ✅ Eitaa functions
     fun loadEitaaPost() {
         viewModelScope.launch {
             try {
@@ -311,7 +324,6 @@ class MainViewModel(
         }
     }
 
-    // ✅ AdText functions
     fun loadAdTextItems() {
         viewModelScope.launch {
             try {
@@ -325,10 +337,8 @@ class MainViewModel(
     }
 
     init {
-        // 1. صفحه اول مطالب
         loadFirstPage()
 
-        // 2. کارت‌های تبلیغاتی (بدون تغییر)
         viewModelScope.launch {
             delay(500)
             loadAdTextItems()
