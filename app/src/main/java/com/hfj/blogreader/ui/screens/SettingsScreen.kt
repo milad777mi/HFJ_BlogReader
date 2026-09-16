@@ -1,8 +1,11 @@
 package com.hfj.blogreader.ui.screens
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -12,13 +15,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,6 +34,16 @@ fun SettingsScreen(
 ) {
     val fontScale by viewModel.fontScale.collectAsState()
     val stats by viewModel.stats.collectAsState()
+
+    // ✅ تابع باز کردن لینک
+    fun openTelegramLink() {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/MMSNETBNM"))
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -167,7 +178,7 @@ fun SettingsScreen(
                 }
             }
 
-            // ========== کارت حول (با رنگ تم برنامه + لینک) ==========
+            // ========== کارت حول (با لینک روی MMSNETBNM) ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -183,72 +194,92 @@ fun SettingsScreen(
                         fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = buildAnnotatedString {
-                            // 1️⃣ خط اول - رنگ تم برنامه
-                            withStyle(SpanStyle(
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )) {
-                                append("MMS.NET BNM.J")
-                            }
-                            append("\n")
-                            append("Build • Network • Media\n")
-                            append("علامة رقمية في مجال التقنية، البرمجة، الإنترنت، الجرافيك والإعلام الرقمي.\n")
-                            append("نمزج بين الفن والتقنية لبناء برامج وحلول رقمية ومحتوى حديث.\n\n")
-                            append("© 2023   2026\n")
-                            append("جميع الحقوق محفوظة لـ\n")
-                            // 2️⃣ بعد از «جميع الحقوق» - رنگ تم برنامه
-                            withStyle(SpanStyle(
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )) {
-                                append("MMS.NET BNM.J")
-                            }
-                            append("\n")
-                            append("يُمنع نقل أو تقليد برامجنا وقوالبنا وأعمالنا، أو إعادة استخدامها دون إذن. كما يُمنع استخدام أفكارنا وطرق عملنا أو إعادة توظيفها دون إذن مسبق.\n")
-                            append("وتحتفظ ")
-                            // 3️⃣ داخل جمله - رنگ تم برنامه
-                            withStyle(SpanStyle(
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )) {
-                                append("MMS.NET BNM.J")
-                            }
-                            append(" بحقها في اتخاذ كافة الإجراءات القانونية بحق كل من يخالف هذه الحقوق.\n\n")
-                            append("made by: ")
-                            // 4️⃣ در «made by» - رنگ تم برنامه
-                            withStyle(SpanStyle(
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )) {
-                                append("MMS.NET BNM.J")
-                            }
-                            append("\ntelegram ch: ")
 
-                            // ✅ 5️⃣ لینک کلیک‌پذیر روی MMSNETBNM
-                            withLink(
-                                LinkAnnotation.Url(
-                                    url = "https://t.me/MMSNETBNM",
-                                    styles = TextLinkStyles(
-                                        style = SpanStyle(
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold,
-                                            textDecoration = TextDecoration.Underline
-                                        )
-                                    )
+                    // ✅ ساخت متن با annotation
+                    val annotatedString = buildAnnotatedString {
+                        // 1️⃣ خط اول
+                        withStyle(SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )) {
+                            append("MMS.NET BNM.J")
+                        }
+                        append("\n")
+                        append("Build • Network • Media\n")
+                        append("علامة رقمية في مجال التقنية، البرمجة، الإنترنت، الجرافيك والإعلام الرقمي.\n")
+                        append("نمزج بين الفن والتقنية لبناء برامج وحلول رقمية ومحتوى حديث.\n\n")
+                        append("© 2023   2026\n")
+                        append("جميع الحقوق محفوظة لـ\n")
+
+                        // 2️⃣ بعد از «جميع الحقوق»
+                        withStyle(SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )) {
+                            append("MMS.NET BNM.J")
+                        }
+                        append("\n")
+                        append("يُمنع نقل أو تقليد برامجنا وقوالبنا وأعمالنا، أو إعادة استخدامها دون إذن. كما يُمنع استخدام أفكارنا وطرق عملنا أو إعادة توظيفها دون إذن مسبق.\n")
+                        append("وتحتفظ ")
+
+                        // 3️⃣ داخل جمله
+                        withStyle(SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )) {
+                            append("MMS.NET BNM.J")
+                        }
+                        append(" بحقها في اتخاذ كافة الإجراءات القانونية بحق كل من يخالف هذه الحقوق.\n\n")
+                        append("made by: ")
+
+                        // 4️⃣ در «made by»
+                        withStyle(SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )) {
+                            append("MMS.NET BNM.J")
+                        }
+                        append("\ntelegram ch: ")
+
+                        // ✅ 5️⃣ لینک کلیک‌پذیر روی MMSNETBNM
+                        pushStringAnnotation(
+                            tag = "TELEGRAM_LINK",
+                            annotation = "https://t.me/MMSNETBNM"
+                        )
+                        withStyle(SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            textDecoration = TextDecoration.Underline
+                        )) {
+                            append("MMSNETBNM")
+                        }
+                        pop()
+
+                        append("\ntelegram: MMSNETBNMBOT\n\n")
+                        append("مدونة حسين فاضل الجنامي\n")
+                        append("1.0.0")
+                    }
+
+                    // ✅ استفاده از ClickableText
+                    ClickableText(
+                        text = annotatedString,
+                        style = TextStyle(
+                            fontSize = 13.sp * fontScale,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            lineHeight = 20.sp
+                        ),
+                        onClick = { offset ->
+                            annotatedString
+                                .getStringAnnotations(
+                                    tag = "TELEGRAM_LINK",
+                                    start = offset,
+                                    end = offset
                                 )
-                            ) {
-                                append("MMSNETBNM")
-                            }
-
-                            append("\ntelegram: MMSNETBNMBOT\n\n")
-                            append("مدونة حسين فاضل الجنامي\n")
-                            append("1.0.0")
-                        },
-                        fontSize = 13.sp * fontScale,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        lineHeight = 20.sp
+                                .firstOrNull()
+                                ?.let {
+                                    openTelegramLink()
+                                }
+                        }
                     )
                 }
             }
