@@ -101,14 +101,19 @@ class MainViewModel(
         return if (min > 0) "$min دقيقة و $sec ثانية" else "$sec ثانية"
     }
 
-    // ✅ جدید: تبدیل ms به فرمت خوانا (5m, 30s, 1h, No limit)
+    // ✅ اصلاح شد: تبدیل ms به فرمت خوانا (5m, 30s, 1h, No limit)
     private fun formatInterval(ms: Long): String {
+        if (ms <= 0L) return "No limit"
+        
+        val totalSec = ms / 1000
+        val hours = totalSec / 3600
+        val minutes = (totalSec % 3600) / 60
+        val seconds = totalSec % 60
+        
         return when {
-            ms <= 0L -> "No limit"
-            ms % (60 * 60 * 1000L) == 0L -> "${ms / (60 * 60 * 1000L)}h"
-            ms % (60 * 1000L) == 0L -> "${ms / (60 * 1000L)}m"
-            ms % 1000L == 0L -> "${ms / 1000L}s"
-            else -> "${ms}ms"
+            hours > 0 -> "${hours}h"
+            minutes > 0 -> "${minutes}m"
+            else -> "${seconds}s"
         }
     }
 
