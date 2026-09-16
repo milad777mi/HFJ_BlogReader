@@ -11,6 +11,7 @@ import com.hfj.blogreader.data.models.AdData
 import com.hfj.blogreader.data.models.EitaaPost
 import com.hfj.blogreader.data.models.AdTextItem
 import com.hfj.blogreader.data.repository.BlogRepository
+import com.hfj.blogreader.data.repository.HfjConfig
 import com.hfj.blogreader.utils.FontSizeManager
 import com.hfj.blogreader.utils.BlogStats
 import com.hfj.blogreader.utils.StatFetcher
@@ -64,7 +65,7 @@ class MainViewModel(
     private val _refreshMessage = MutableStateFlow<String?>(null)
     val refreshMessage: StateFlow<String?> = _refreshMessage
 
-    // ✅ جدید: پیام cache
+    // ✅ پیام cache (وقتی از Room خوندیم)
     private val _cacheMessage = MutableStateFlow<String?>(null)
     val cacheMessage: StateFlow<String?> = _cacheMessage
 
@@ -101,15 +102,15 @@ class MainViewModel(
         return if (min > 0) "$min دقيقة و $sec ثانية" else "$sec ثانية"
     }
 
-    // ✅ اصلاح شد: تبدیل ms به فرمت خوانا (5m, 30s, 1h, No limit)
+    // ✅ تبدیل ms به فرمت خوانا (5m, 30s, 1h, No limit)
     private fun formatInterval(ms: Long): String {
         if (ms <= 0L) return "No limit"
-        
+
         val totalSec = ms / 1000
         val hours = totalSec / 3600
         val minutes = (totalSec % 3600) / 60
         val seconds = totalSec % 60
-        
+
         return when {
             hours > 0 -> "${hours}h"
             minutes > 0 -> "${minutes}m"
@@ -127,23 +128,41 @@ class MainViewModel(
         editor.apply()
     }
 
+    // ✅ اعمال config (HfjConfig) + چک کردن cacheVersion
+    private fun applyConfig(config: HfjConfig) {
+        APP_OPEN_INTERVAL_MS  = config.appOpenMs
+        REFRESH_INTERVAL_MS   = config.refreshMs
+        LOAD_MORE_INTERVAL_MS = config.loadMoreMs
+
+        prefs.edit()
+            .putLong("cfg_app_open", config.appOpenMs)
+            .putLong("cfg_refresh", config.refreshMs)
+            .putLong("cfg_load_more", config.loadMoreMs)
+            .apply()
+
+        // ✅ چک cacheVersion
+        val localVersion = prefs.getInt("cache_version", 0)
+        if (localVersion > 0 && config.cacheVersion > localVersion) {
+            // 🔄 مدیر کش رو ریست کرده → flag بذار
+            prefs.edit()
+                .putBoolean("clear_cache_pending", true)
+                .apply()
+
+            _cacheMessage.value = "🔄 Refreshing content..."
+        }
+        // همیشه نسخه سرور رو ذخیره کن
+        prefs.edit().putInt("cache_version", config.cacheVersion).apply()
+    }
+
     // ============================================================
-    // ✅ لود config از Worker
+    // ✅ Fallback: لود config از Worker (با درخواست جدا)
     // ============================================================
     private fun loadConfigFromServer() {
         viewModelScope.launch {
             try {
                 val config = blogRepo.fetchConfig()
                 if (config != null) {
-                    APP_OPEN_INTERVAL_MS  = config.first
-                    REFRESH_INTERVAL_MS   = config.second
-                    LOAD_MORE_INTERVAL_MS = config.third
-
-                    prefs.edit()
-                        .putLong("cfg_app_open", APP_OPEN_INTERVAL_MS)
-                        .putLong("cfg_refresh", REFRESH_INTERVAL_MS)
-                        .putLong("cfg_load_more", LOAD_MORE_INTERVAL_MS)
-                        .apply()
+                    applyConfig(config)
                 } else {
                     loadConfigFromPrefs()
                 }
@@ -160,7 +179,8 @@ class MainViewModel(
     }
 
     // ============================================================
-    // 📱 لود اولیه
+    // 📱 لود اولیه (مطالب + config با هم)
+    // ✅ اول flag cache clear رو چک می‌کنه
     // ✅ اگه از Room خوندیم → پیام cache نشون بده
     // ============================================================
     fun loadFirstPage() {
@@ -168,12 +188,25 @@ class MainViewModel(
             _isLoading.value = true
             _errorMessage.value = null
 
+            // 🆕 چک pending cache clear (از مدیر)
+            if (prefs.getBoolean("clear_cache_pending", false)) {
+                blogRepo.clearCache()
+                prefs.edit()
+                    .putBoolean("clear_cache_pending", false)
+                    .remove("next_page_url")
+                    .remove("last_app_open_fetch")
+                    .apply()
+                nextPageUrl = null
+                _hasMorePosts.value = false
+            }
+
             // ✅ چک محدودیت (0 = بدون محدودیت)
             val isNoLimit = APP_OPEN_INTERVAL_MS == 0L
             val lastFetch = prefs.getLong("last_app_open_fetch", 0L)
             val elapsed = System.currentTimeMillis() - lastFetch
             val isCacheValid = !isNoLimit && (elapsed < APP_OPEN_INTERVAL_MS)
 
+            // ۱️⃣ از Room بخون + پیام cache
             if (isCacheValid) {
                 val cached = blogRepo.getCachedPosts()
                 if (cached.isNotEmpty()) {
@@ -188,20 +221,32 @@ class MainViewModel(
                     val remainingText = formatInterval(remaining)
                     _cacheMessage.value = "📦 From cache | Update: $intervalText | Next in: $remainingText"
 
+                    // ✅ config رو جدا بگیر (Fallback)
+                    loadConfigFromServer()
                     return@launch
                 }
             }
 
+            // ۲️⃣ از Worker بگیر (مطالب + config با هم)
             try {
-                val (posts, nextUrl) = blogRepo.fetchFirstPage()
-                _allPosts.value = posts
-                nextPageUrl = nextUrl
-                _hasMorePosts.value = !nextUrl.isNullOrBlank()
+                val result = blogRepo.fetchFirstPageWithConfig()
 
-                saveNextPageUrl(nextUrl)
+                _allPosts.value = result.posts
+                nextPageUrl = result.nextUrl
+                _hasMorePosts.value = !result.nextUrl.isNullOrBlank()
+
+                saveNextPageUrl(result.nextUrl)
                 prefs.edit().putLong("last_app_open_fetch", System.currentTimeMillis()).apply()
 
-                if (posts.isEmpty()) {
+                // ✅ اگه config اومد، اعمال کن
+                if (result.config != null) {
+                    applyConfig(result.config)
+                } else {
+                    // ⚠️ config نبود → Fallback
+                    loadConfigFromServer()
+                }
+
+                if (result.posts.isEmpty()) {
                     _errorMessage.value = "⚠️ هیچ پستی یافت نشد"
                 }
             } catch (e: Exception) {
@@ -219,6 +264,9 @@ class MainViewModel(
                     _allPosts.value = emptyList()
                 }
                 e.printStackTrace()
+
+                // ⚠️ خطا → Fallback: از prefs
+                loadConfigFromPrefs()
             }
             _isLoading.value = false
         }
@@ -292,12 +340,17 @@ class MainViewModel(
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val (posts, nextUrl) = blogRepo.fetchFirstPage()
-                _allPosts.value = posts
-                nextPageUrl = nextUrl
-                _hasMorePosts.value = !nextUrl.isNullOrBlank()
+                val result = blogRepo.fetchFirstPageWithConfig()
 
-                saveNextPageUrl(nextUrl)
+                _allPosts.value = result.posts
+                nextPageUrl = result.nextUrl
+                _hasMorePosts.value = !result.nextUrl.isNullOrBlank()
+
+                saveNextPageUrl(result.nextUrl)
+
+                if (result.config != null) {
+                    applyConfig(result.config)
+                }
             } catch (e: Exception) {
                 _errorMessage.value = "❌ تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.mms.net.services.errors"
                 e.printStackTrace()
@@ -459,11 +512,6 @@ class MainViewModel(
 
             delay(300)
             loadEitaaPost()
-        }
-
-        viewModelScope.launch {
-            delay(2000)
-            loadConfigFromServer()
         }
     }
 }
