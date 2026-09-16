@@ -64,6 +64,10 @@ class MainViewModel(
     private val _refreshMessage = MutableStateFlow<String?>(null)
     val refreshMessage: StateFlow<String?> = _refreshMessage
 
+    // ✅ جدید: پیام cache
+    private val _cacheMessage = MutableStateFlow<String?>(null)
+    val cacheMessage: StateFlow<String?> = _cacheMessage
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
@@ -97,6 +101,17 @@ class MainViewModel(
         return if (min > 0) "$min دقيقة و $sec ثانية" else "$sec ثانية"
     }
 
+    // ✅ جدید: تبدیل ms به فرمت خوانا (5m, 30s, 1h, No limit)
+    private fun formatInterval(ms: Long): String {
+        return when {
+            ms <= 0L -> "No limit"
+            ms % (60 * 60 * 1000L) == 0L -> "${ms / (60 * 60 * 1000L)}h"
+            ms % (60 * 1000L) == 0L -> "${ms / (60 * 1000L)}m"
+            ms % 1000L == 0L -> "${ms / 1000L}s"
+            else -> "${ms}ms"
+        }
+    }
+
     private fun saveNextPageUrl(url: String?) {
         val editor = prefs.edit()
         if (url.isNullOrBlank()) {
@@ -109,16 +124,12 @@ class MainViewModel(
 
     // ============================================================
     // ✅ لود config از Worker
-    //   ۱. Worker در دسترس → مقادیر جدید (میلی‌ثانیه)
-    //   ۲. Worker نبود → از prefs
-    //   ۳. prefs خالی → پیش‌فرض کد
     // ============================================================
     private fun loadConfigFromServer() {
         viewModelScope.launch {
             try {
                 val config = blogRepo.fetchConfig()
                 if (config != null) {
-                    // ✅ مقادیر به میلی‌ثانیه هستن
                     APP_OPEN_INTERVAL_MS  = config.first
                     REFRESH_INTERVAL_MS   = config.second
                     LOAD_MORE_INTERVAL_MS = config.third
@@ -145,7 +156,7 @@ class MainViewModel(
 
     // ============================================================
     // 📱 لود اولیه
-    // ✅ اگه APP_OPEN_INTERVAL_MS == 0L → همیشه از Worker (بدون کش)
+    // ✅ اگه از Room خوندیم → پیام cache نشون بده
     // ============================================================
     fun loadFirstPage() {
         viewModelScope.launch {
@@ -165,6 +176,13 @@ class MainViewModel(
                     nextPageUrl = prefs.getString("next_page_url", null)
                     _hasMorePosts.value = !nextPageUrl.isNullOrBlank()
                     _isLoading.value = false
+
+                    // ✅ پیام cache: زمان باقی‌مونده
+                    val remaining = APP_OPEN_INTERVAL_MS - elapsed
+                    val intervalText = formatInterval(APP_OPEN_INTERVAL_MS)
+                    val remainingText = formatInterval(remaining)
+                    _cacheMessage.value = "📦 From cache | Update: $intervalText | Next in: $remainingText"
+
                     return@launch
                 }
             }
@@ -187,6 +205,10 @@ class MainViewModel(
                     _allPosts.value = cached
                     nextPageUrl = prefs.getString("next_page_url", null)
                     _hasMorePosts.value = !nextPageUrl.isNullOrBlank()
+
+                    // ✅ پیام cache: به‌خاطر خطا
+                    val intervalText = formatInterval(APP_OPEN_INTERVAL_MS)
+                    _cacheMessage.value = "📦 From cache (offline) | Update: $intervalText"
                 } else {
                     _errorMessage.value = "❌ تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.mms.net.services.errors"
                     _allPosts.value = emptyList()
@@ -199,7 +221,6 @@ class MainViewModel(
 
     // ============================================================
     // 📥 نمایش بیشتر
-    // ✅ اگه LOAD_MORE_INTERVAL_MS == 0L → بدون محدودیت
     // ============================================================
     fun loadMorePosts() {
         if (_isLoadingMore.value) return
@@ -211,7 +232,6 @@ class MainViewModel(
             return
         }
 
-        // ✅ چک محدودیت (0 = بدون محدودیت)
         if (LOAD_MORE_INTERVAL_MS > 0L) {
             val lastLoadMore = prefs.getLong("last_load_more", 0L)
             val elapsed = System.currentTimeMillis() - lastLoadMore
@@ -247,10 +267,8 @@ class MainViewModel(
 
     // ============================================================
     // 🔄 دکمه Refresh
-    // ✅ اگه REFRESH_INTERVAL_MS == 0L → بدون محدودیت
     // ============================================================
     fun forceRefresh() {
-        // ✅ چک محدودیت (0 = بدون محدودیت)
         if (REFRESH_INTERVAL_MS > 0L) {
             val lastRefresh = prefs.getLong("last_manual_refresh", 0L)
             val elapsed = System.currentTimeMillis() - lastRefresh
@@ -289,6 +307,11 @@ class MainViewModel(
 
     fun clearLoadMoreMessage() {
         _loadMoreMessage.value = null
+    }
+
+    // ✅ جدید: پاک کردن پیام cache
+    fun clearCacheMessage() {
+        _cacheMessage.value = null
     }
 
     fun fetchAllPosts() {
@@ -418,17 +441,10 @@ class MainViewModel(
         }
     }
 
-    // ============================================================
-    // init: ترتیب اجرا
-    // ============================================================
     init {
-        // ۱. اول config از prefs (فوری)
         loadConfigFromPrefs()
-
-        // ۲. مطالب
         loadFirstPage()
 
-        // ۳. کارت‌های تبلیغاتی
         viewModelScope.launch {
             delay(500)
             loadAdTextItems()
@@ -440,7 +456,6 @@ class MainViewModel(
             loadEitaaPost()
         }
 
-        // ۴. بعد از ۲ ثانیه، config از Worker
         viewModelScope.launch {
             delay(2000)
             loadConfigFromServer()
