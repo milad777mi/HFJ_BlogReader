@@ -41,6 +41,8 @@ fun HomeScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val refreshMessage by viewModel.refreshMessage.collectAsState()
     val loadMoreMessage by viewModel.loadMoreMessage.collectAsState()
+    // ✅ جدید: پیام cache
+    val cacheMessage by viewModel.cacheMessage.collectAsState()
     val fontScale = LocalFontScale.current
 
     val adData by viewModel.adData.collectAsState()
@@ -80,6 +82,19 @@ fun HomeScreen(
         }
     }
 
+    // ============================================================
+    // ✅ جدید: نمایش پیام Cache (وقتی از Room خوندیم)
+    // ============================================================
+    LaunchedEffect(cacheMessage) {
+        cacheMessage?.let { msg ->
+            snackbarHostState.showSnackbar(
+                message = msg,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearCacheMessage()
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -92,7 +107,6 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    // ✅ تغییر: قبل از forceRefresh، پیام قبلی رو پاک کن
                     IconButton(onClick = {
                         viewModel.clearRefreshMessage()
                         viewModel.forceRefresh()
@@ -139,7 +153,6 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            // ✅ تغییر: قبل از forceRefresh، پیام قبلی رو پاک کن
                             Button(onClick = {
                                 viewModel.clearRefreshMessage()
                                 viewModel.forceRefresh()
