@@ -30,7 +30,8 @@ class MainViewModel(
     private val blogRepo = BlogRepository(getApplication())
     private val fontManager = FontSizeManager(getApplication())
 
-    // ✅ پیش‌فرض‌های جدید (دقیقه → میلی‌ثانیه)
+    // ✅ پیش‌فرض‌ها (میلی‌ثانیه)
+    // 0 = بدون محدودیت
     private var APP_OPEN_INTERVAL_MS  = 17 * 60 * 1000L
     private var REFRESH_INTERVAL_MS   = 13 * 60 * 1000L
     private var LOAD_MORE_INTERVAL_MS =  5 * 60 * 1000L
@@ -107,33 +108,30 @@ class MainViewModel(
     }
 
     // ============================================================
-    // ✅ جدید: لود config از Worker (با fallback)
-    //   ۱. اگه Worker در دسترس بود → از Worker
-    //   ۲. اگه نبود → از prefs (مقدار قبلی)
-    //   ۳. اگه prefs هم خالی بود → پیش‌فرض کد (۱۷، ۱۳، ۵)
+    // ✅ لود config از Worker
+    //   ۱. Worker در دسترس → مقادیر جدید (میلی‌ثانیه)
+    //   ۲. Worker نبود → از prefs
+    //   ۳. prefs خالی → پیش‌فرض کد
     // ============================================================
     private fun loadConfigFromServer() {
         viewModelScope.launch {
             try {
                 val config = blogRepo.fetchConfig()
                 if (config != null) {
-                    // ✅ Worker پاسخ داد
-                    APP_OPEN_INTERVAL_MS  = config.first * 60 * 1000L
-                    REFRESH_INTERVAL_MS   = config.second * 60 * 1000L
-                    LOAD_MORE_INTERVAL_MS = config.third * 60 * 1000L
+                    // ✅ مقادیر به میلی‌ثانیه هستن
+                    APP_OPEN_INTERVAL_MS  = config.first
+                    REFRESH_INTERVAL_MS   = config.second
+                    LOAD_MORE_INTERVAL_MS = config.third
 
-                    // ذخیره توی prefs
                     prefs.edit()
                         .putLong("cfg_app_open", APP_OPEN_INTERVAL_MS)
                         .putLong("cfg_refresh", REFRESH_INTERVAL_MS)
                         .putLong("cfg_load_more", LOAD_MORE_INTERVAL_MS)
                         .apply()
                 } else {
-                    // ❌ Worker پاسخ نداد → از prefs
                     loadConfigFromPrefs()
                 }
             } catch (e: Exception) {
-                // ❌ خطا → از prefs
                 loadConfigFromPrefs()
             }
         }
@@ -147,15 +145,18 @@ class MainViewModel(
 
     // ============================================================
     // 📱 لود اولیه
+    // ✅ اگه APP_OPEN_INTERVAL_MS == 0L → همیشه از Worker (بدون کش)
     // ============================================================
     fun loadFirstPage() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
+            // ✅ چک محدودیت (0 = بدون محدودیت)
+            val isNoLimit = APP_OPEN_INTERVAL_MS == 0L
             val lastFetch = prefs.getLong("last_app_open_fetch", 0L)
             val elapsed = System.currentTimeMillis() - lastFetch
-            val isCacheValid = elapsed < APP_OPEN_INTERVAL_MS
+            val isCacheValid = !isNoLimit && (elapsed < APP_OPEN_INTERVAL_MS)
 
             if (isCacheValid) {
                 val cached = blogRepo.getCachedPosts()
@@ -198,6 +199,7 @@ class MainViewModel(
 
     // ============================================================
     // 📥 نمایش بیشتر
+    // ✅ اگه LOAD_MORE_INTERVAL_MS == 0L → بدون محدودیت
     // ============================================================
     fun loadMorePosts() {
         if (_isLoadingMore.value) return
@@ -209,13 +211,16 @@ class MainViewModel(
             return
         }
 
-        val lastLoadMore = prefs.getLong("last_load_more", 0L)
-        val elapsed = System.currentTimeMillis() - lastLoadMore
+        // ✅ چک محدودیت (0 = بدون محدودیت)
+        if (LOAD_MORE_INTERVAL_MS > 0L) {
+            val lastLoadMore = prefs.getLong("last_load_more", 0L)
+            val elapsed = System.currentTimeMillis() - lastLoadMore
 
-        if (elapsed < LOAD_MORE_INTERVAL_MS) {
-            val remaining = LOAD_MORE_INTERVAL_MS - elapsed
-            _loadMoreMessage.value = "⏱️ انتظر ${formatRemaining(remaining)} قبل المحاولة مرة أخرى"
-            return
+            if (elapsed < LOAD_MORE_INTERVAL_MS) {
+                val remaining = LOAD_MORE_INTERVAL_MS - elapsed
+                _loadMoreMessage.value = "⏱️ انتظر ${formatRemaining(remaining)} قبل المحاولة مرة أخرى"
+                return
+            }
         }
 
         _loadMoreMessage.value = null
@@ -242,15 +247,19 @@ class MainViewModel(
 
     // ============================================================
     // 🔄 دکمه Refresh
+    // ✅ اگه REFRESH_INTERVAL_MS == 0L → بدون محدودیت
     // ============================================================
     fun forceRefresh() {
-        val lastRefresh = prefs.getLong("last_manual_refresh", 0L)
-        val elapsed = System.currentTimeMillis() - lastRefresh
+        // ✅ چک محدودیت (0 = بدون محدودیت)
+        if (REFRESH_INTERVAL_MS > 0L) {
+            val lastRefresh = prefs.getLong("last_manual_refresh", 0L)
+            val elapsed = System.currentTimeMillis() - lastRefresh
 
-        if (elapsed < REFRESH_INTERVAL_MS) {
-            val remaining = REFRESH_INTERVAL_MS - elapsed
-            _refreshMessage.value = "⏱️ انتظر ${formatRemaining(remaining)} قبل التحديث"
-            return
+            if (elapsed < REFRESH_INTERVAL_MS) {
+                val remaining = REFRESH_INTERVAL_MS - elapsed
+                _refreshMessage.value = "⏱️ انتظر ${formatRemaining(remaining)} قبل التحديث"
+                return
+            }
         }
 
         _refreshMessage.value = null
@@ -411,10 +420,6 @@ class MainViewModel(
 
     // ============================================================
     // init: ترتیب اجرا
-    //   ۱. اول از prefs بخون (سریع) — تایمرها آماده بشن
-    //   ۲. بعد مطالب
-    //   ۳. بعد کارت‌های تبلیغاتی
-    //   ۴. بعد از ۲ ثانیه، config رو از Worker بگیر
     // ============================================================
     init {
         // ۱. اول config از prefs (فوری)
@@ -435,7 +440,7 @@ class MainViewModel(
             loadEitaaPost()
         }
 
-        // ۴. بعد از ۲ ثانیه، config از Worker (با تأخیر تا مطالب سریع بیان)
+        // ۴. بعد از ۲ ثانیه، config از Worker
         viewModelScope.launch {
             delay(2000)
             loadConfigFromServer()
