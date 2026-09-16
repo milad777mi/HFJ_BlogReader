@@ -12,9 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -163,7 +167,7 @@ fun SettingsScreen(
                 }
             }
 
-            // ========== کارت حول (با رنگ تم برنامه) ==========
+            // ========== کارت حول (با رنگ تم برنامه + لینک) ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -220,8 +224,25 @@ fun SettingsScreen(
                             )) {
                                 append("MMS.NET BNM.J")
                             }
-                            append("\ntelegram ch: MMSNETBNM\n")
-                            append("telegram: MMSNETBNMBOT\n\n")
+                            append("\ntelegram ch: ")
+
+                            // ✅ 5️⃣ لینک کلیک‌پذیر روی MMSNETBNM
+                            withLink(
+                                LinkAnnotation.Url(
+                                    url = "https://t.me/MMSNETBNM",
+                                    styles = TextLinkStyles(
+                                        style = SpanStyle(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                            textDecoration = TextDecoration.Underline
+                                        )
+                                    )
+                                )
+                            ) {
+                                append("MMSNETBNM")
+                            }
+
+                            append("\ntelegram: MMSNETBNMBOT\n\n")
                             append("مدونة حسين فاضل الجنامي\n")
                             append("1.0.0")
                         },
