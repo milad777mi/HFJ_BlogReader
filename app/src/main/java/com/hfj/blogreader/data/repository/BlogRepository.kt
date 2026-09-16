@@ -10,6 +10,21 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
+// ✅ config کامل (شامل cacheVersion)
+data class HfjConfig(
+    val appOpenMs: Long,
+    val refreshMs: Long,
+    val loadMoreMs: Long,
+    val cacheVersion: Int
+)
+
+// ✅ نتیجه‌ی صفحه اول (مطالب + صفحه بعد + config)
+data class FirstPageResult(
+    val posts: List<Post>,
+    val nextUrl: String?,
+    val config: HfjConfig?
+)
+
 class BlogRepository(private val context: Context) {
 
     private val baseUrl = "https://bllosoft-glade-6b08.bnmkiio180.workers.dev/"
@@ -20,11 +35,57 @@ class BlogRepository(private val context: Context) {
     private val CACHE_DURATION_MS = 10 * 60 * 1000L
 
     // ============================================================
-    // ✅ خوندن config از meta tag صفحه اصلی
-    // برمی‌گردونه: Triple(appOpenMs, refreshMs, loadMoreMs) یا null
-    // مقدار 0 = بدون محدودیت
+    // ✅ صفحه اول + config با هم (یک درخواست)
     // ============================================================
-    suspend fun fetchConfig(): Triple<Long, Long, Long>? = withContext(Dispatchers.IO) {
+    suspend fun fetchFirstPageWithConfig(): FirstPageResult = withContext(Dispatchers.IO) {
+        val doc = fetchDocument(baseUrl)
+        val posts = extractPosts(doc)
+        val nextLink = doc.select("a.nextlink").first()?.attr("href")
+            ?.let { buildNextUrl(it) }
+
+        // ✅ استخراج config از همون HTML
+        val config = extractConfigFromDoc(doc)
+
+        if (posts.isNotEmpty()) {
+            postDao.insertPosts(posts.map { PostEntity.fromPost(it) })
+        }
+
+        FirstPageResult(posts, nextLink, config)
+    }
+
+    // ============================================================
+    // ✅ استخراج config از Document (بدون درخواست اضافه)
+    // ============================================================
+    private fun extractConfigFromDoc(doc: Document): HfjConfig? {
+        return try {
+            val meta = doc.select("meta[name=hfj-config]").first() ?: return null
+            val json = meta.attr("content")
+            if (json.isBlank()) return null
+
+            val appOpen  = extractLongFromJson(json, "appOpenMs")
+            val refresh  = extractLongFromJson(json, "refreshMs")
+            val loadMore = extractLongFromJson(json, "loadMoreMs")
+            val cacheVer = extractLongFromJson(json, "cacheVersion")
+
+            if (appOpen >= 0 && refresh >= 0 && loadMore >= 0) {
+                HfjConfig(
+                    appOpenMs = appOpen,
+                    refreshMs = refresh,
+                    loadMoreMs = loadMore,
+                    cacheVersion = if (cacheVer > 0) cacheVer.toInt() else 1
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // ============================================================
+    // ✅ Fallback: خوندن config با درخواست جدا
+    // ============================================================
+    suspend fun fetchConfig(): HfjConfig? = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.connect(baseUrl)
                 .timeout(10000)
@@ -33,29 +94,14 @@ class BlogRepository(private val context: Context) {
                 .ignoreHttpErrors(true)
                 .get()
 
-            val meta = doc.select("meta[name=hfj-config]").first() ?: return@withContext null
-            val json = meta.attr("content")
-            if (json.isBlank()) return@withContext null
-
-            val appOpen  = extractLongFromJson(json, "appOpenMs")
-            val refresh  = extractLongFromJson(json, "refreshMs")
-            val loadMore = extractLongFromJson(json, "loadMoreMs")
-
-            // ✅ هر سه مقدار باید معتبر باشن (>= 0)
-            // 0 = بدون محدودیت (معتبر)
-            if (appOpen >= 0 && refresh >= 0 && loadMore >= 0) {
-                Triple(appOpen, refresh, loadMore)
-            } else {
-                null
-            }
+            extractConfigFromDoc(doc)
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
 
-    // ✅ استخراج عدد (Long) از JSON ساده (بدون کتابخانه)
-    // مقدار منفی (-1) یعنی کلید پیدا نشد
+    // ✅ استخراج عدد (Long) از JSON ساده
     private fun extractLongFromJson(json: String, key: String): Long {
         val pattern = "\"$key\"\\s*:\\s*(\\d+)".toRegex()
         val match = pattern.find(json) ?: return -1L
@@ -72,6 +118,7 @@ class BlogRepository(private val context: Context) {
         postDao.getAllPosts().map { it.toPost() }
     }
 
+    // ✅ حفظ شد برای سازگاری
     suspend fun fetchFirstPage(): Pair<List<Post>, String?> = withContext(Dispatchers.IO) {
         val doc = fetchDocument(baseUrl)
         val posts = extractPosts(doc)
