@@ -37,6 +37,9 @@ class MainViewModel(
     private var REFRESH_INTERVAL_MS   = 13 * 60 * 1000L
     private var LOAD_MORE_INTERVAL_MS =  5 * 60 * 1000L
 
+    // ✅ auto-reset کش هر ۶ ساعت
+    private val AUTO_RESET_INTERVAL_MS = 6 * 60 * 60 * 1000L
+
     private val prefs: SharedPreferences =
         getApplication<Application>().getSharedPreferences("blog_prefs", Context.MODE_PRIVATE)
 
@@ -180,7 +183,8 @@ class MainViewModel(
 
     // ============================================================
     // 📱 لود اولیه (مطالب + config با هم)
-    // ✅ اول flag cache clear رو چک می‌کنه
+    // ✅ چک cacheVersion (از مدیر)
+    // ✅ چک auto-reset (هر ۶ ساعت)
     // ✅ اگه از Room خوندیم → پیام cache نشون بده
     // ============================================================
     fun loadFirstPage() {
@@ -188,11 +192,31 @@ class MainViewModel(
             _isLoading.value = true
             _errorMessage.value = null
 
-            // 🆕 چک pending cache clear (از مدیر)
+            // ۱️⃣ چک pending cache clear (از مدیر)
             if (prefs.getBoolean("clear_cache_pending", false)) {
                 blogRepo.clearCache()
                 prefs.edit()
                     .putBoolean("clear_cache_pending", false)
+                    .remove("next_page_url")
+                    .remove("last_app_open_fetch")
+                    .apply()
+                nextPageUrl = null
+                _hasMorePosts.value = false
+            }
+
+            // ۲️⃣ 🆕 auto-reset کش هر ۶ ساعت
+            val lastAutoReset = prefs.getLong("last_auto_reset", 0L)
+            val now = System.currentTimeMillis()
+            val sinceReset = now - lastAutoReset
+
+            if (lastAutoReset == 0L) {
+                // بار اول → فقط زمان رو ثبت کن
+                prefs.edit().putLong("last_auto_reset", now).apply()
+            } else if (sinceReset >= AUTO_RESET_INTERVAL_MS) {
+                // ✅ ۶ ساعت گذشته → کش پاک کن
+                blogRepo.clearCache()
+                prefs.edit()
+                    .putLong("last_auto_reset", now)
                     .remove("next_page_url")
                     .remove("last_app_open_fetch")
                     .apply()
@@ -206,7 +230,7 @@ class MainViewModel(
             val elapsed = System.currentTimeMillis() - lastFetch
             val isCacheValid = !isNoLimit && (elapsed < APP_OPEN_INTERVAL_MS)
 
-            // ۱️⃣ از Room بخون + پیام cache
+            // ۳️⃣ از Room بخون + پیام cache
             if (isCacheValid) {
                 val cached = blogRepo.getCachedPosts()
                 if (cached.isNotEmpty()) {
@@ -227,7 +251,7 @@ class MainViewModel(
                 }
             }
 
-            // ۲️⃣ از Worker بگیر (مطالب + config با هم)
+            // ۴️⃣ از Worker بگیر (مطالب + config با هم)
             try {
                 val result = blogRepo.fetchFirstPageWithConfig()
 
@@ -367,7 +391,7 @@ class MainViewModel(
         _loadMoreMessage.value = null
     }
 
-    // ✅ جدید: پاک کردن پیام cache
+    // ✅ پاک کردن پیام cache
     fun clearCacheMessage() {
         _cacheMessage.value = null
     }
