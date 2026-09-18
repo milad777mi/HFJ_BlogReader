@@ -55,6 +55,11 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // ✅ جدید: هر بار ورود، برو به بالای لیست
+    LaunchedEffect(Unit) {
+        listState.scrollToItem(0)
+    }
+
     fun openLink(link: String) {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
