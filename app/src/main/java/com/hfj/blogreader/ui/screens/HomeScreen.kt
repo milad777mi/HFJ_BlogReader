@@ -55,9 +55,20 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // ✅ جدید: هر بار ورود، برو به بالای لیست
-    LaunchedEffect(Unit) {
-        listState.scrollToItem(0)
+    // ✅ جدید: هر بار کارت‌های تبلیغاتی لود شدن، اگه کاربر بالای لیست بود، اسکرول به بالا
+    var lastAdsSignature by remember { mutableStateOf("") }
+
+    LaunchedEffect(adTextItems, ad, eitaa) {
+        val signature = "${adTextItems.size}|${ad != null}|${eitaa != null}"
+
+        if (signature != lastAdsSignature) {
+            lastAdsSignature = signature
+
+            // اگه کاربر بالای لیسته (ایندکس ۰ تا ۲)، خودکار بچسبون به بالا
+            if (listState.firstVisibleItemIndex <= 2) {
+                listState.scrollToItem(0)
+            }
+        }
     }
 
     fun openLink(link: String) {
