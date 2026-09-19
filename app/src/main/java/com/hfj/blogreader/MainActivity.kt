@@ -50,11 +50,10 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val context = LocalContext.current
 
-            // ✅ افزایش آمار + ثبت آنلاین + دریافت تعداد، هنگام باز شدن برنامه
+            // ✅ افزایش آمار + ثبت آنلاین و دریافت تعداد (ترتیبی)، هنگام باز شدن برنامه
             LaunchedEffect(Unit) {
                 viewModel.incrementStats(context)
-                viewModel.registerOnlineVisit(context)
-                viewModel.loadOnlineCount()  // ✅ جدید
+                viewModel.registerAndLoadOnline(context)  // ✅ ترکیبی و ترتیبی
             }
 
             HFJBlogReaderTheme {
