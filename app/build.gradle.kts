@@ -9,7 +9,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.hfj.blogreader"
+        applicationId = "com.mmsnet.bnmh"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -21,6 +21,21 @@ android {
         }
     }
 
+    // 🆕 امضا
+    val keystorePath = System.getenv("KEYSTORE_PATH")
+    val hasKeystore = keystorePath != null && file(keystorePath).exists()
+
+    signingConfigs {
+        if (hasKeystore) {
+            create("release") {
+                storeFile = file(keystorePath!!)
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -28,6 +43,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 🆕 امضا (اگه keystore موجود باشه)
+            if (hasKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         debug {
             isMinifyEnabled = false
@@ -85,14 +104,14 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
-    // Jsoup (استخراج HTML)
+    // Jsoup
     implementation("org.jsoup:jsoup:1.17.2")
 
-    // ✅ Coil (نمایش تصاویر و پشتیبانی از GIF)
+    // Coil
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("io.coil-kt:coil-gif:2.6.0")
 
-    // ExoPlayer (پخش فیلم)
+    // ExoPlayer
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.3.1")
@@ -100,7 +119,7 @@ dependencies {
     // SharedPreferences
     implementation("androidx.preference:preference-ktx:1.2.1")
 
-    // 🆕 Room (دیتابیس محلی)
+    // Room
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
