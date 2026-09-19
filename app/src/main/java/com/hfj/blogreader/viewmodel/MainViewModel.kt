@@ -20,6 +20,7 @@ import com.hfj.blogreader.utils.CommentManager
 import com.hfj.blogreader.utils.AdManager
 import com.hfj.blogreader.utils.EitaaApi
 import com.hfj.blogreader.utils.AdTextManager
+import com.hfj.blogreader.utils.OnlineCounter  // ✅ جدید
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -79,6 +80,10 @@ class MainViewModel(
 
     private val _stats = MutableStateFlow(BlogStats())
     val stats: StateFlow<BlogStats> = _stats
+
+    // ✅ افراد آنلاین (جدید)
+    private val _onlineCount = MutableStateFlow("0")
+    val onlineCount: StateFlow<String> = _onlineCount
 
     private val _likes = MutableStateFlow<Map<String, Int>>(emptyMap())
     val likes: StateFlow<Map<String, Int>> = _likes
@@ -418,6 +423,30 @@ class MainViewModel(
                 _stats.value = result
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    // ✅ ثبت بازدید آنلاین (جدید)
+    fun registerOnlineVisit(context: Context) {
+        viewModelScope.launch {
+            try {
+                OnlineCounter.registerVisit(context)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ✅ دریافت تعداد افراد آنلاین (جدید)
+    fun loadOnlineCount() {
+        viewModelScope.launch {
+            try {
+                val count = OnlineCounter.getOnlineCount()
+                _onlineCount.value = count
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _onlineCount.value = "0"
             }
         }
     }
