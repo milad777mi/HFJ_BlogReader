@@ -21,14 +21,27 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/keystore.jks
+
       - name: اعطای دسترسی به gradlew
         run: chmod +x gradlew
 
-      - name: ساخت فایل APK (Debug)
-        run: ./gradlew assembleDebug
+      - name: ساخت فایل APK (Release با امضا)
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: حذف keystore (امنیتی)
+        if: always()
+        run: rm -f ${{ github.workspace }}/keystore.jks
 
       - name: آپلود فایل APK
         uses: actions/upload-artifact@v4
         with:
-          name: HFJ_BlogReader-Debug
-          path: app/build/outputs/apk/debug/*.apk
+          name: MMSNET-Release
+          path: app/build/outputs/apk/release/*.apk
