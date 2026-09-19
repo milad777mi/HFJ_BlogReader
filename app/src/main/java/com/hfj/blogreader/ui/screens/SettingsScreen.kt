@@ -34,6 +34,7 @@ fun SettingsScreen(
 ) {
     val fontScale by viewModel.fontScale.collectAsState()
     val stats by viewModel.stats.collectAsState()
+    val onlineCount by viewModel.onlineCount.collectAsState()
 
     // ✅ تابع باز کردن لینک
     fun openTelegramLink() {
@@ -86,6 +87,7 @@ fun SettingsScreen(
 
                     StatRow("اليوم", stats.today, fontScale)
                     StatRow("الإجمالي", stats.total, fontScale)
+                    StatRow("الأشخاص المتصلون", onlineCount, fontScale)
                 }
             }
 
