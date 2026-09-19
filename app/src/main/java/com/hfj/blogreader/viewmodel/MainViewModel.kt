@@ -20,7 +20,7 @@ import com.hfj.blogreader.utils.CommentManager
 import com.hfj.blogreader.utils.AdManager
 import com.hfj.blogreader.utils.EitaaApi
 import com.hfj.blogreader.utils.AdTextManager
-import com.hfj.blogreader.utils.OnlineCounter  // ✅ جدید
+import com.hfj.blogreader.utils.OnlineCounter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -442,6 +442,23 @@ class MainViewModel(
     fun loadOnlineCount() {
         viewModelScope.launch {
             try {
+                val count = OnlineCounter.getOnlineCount()
+                _onlineCount.value = count
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _onlineCount.value = "0"
+            }
+        }
+    }
+
+    // ✅ ثبت UUID + خواندن تعداد (ترتیبی) — جدید
+    fun registerAndLoadOnline(context: Context) {
+        viewModelScope.launch {
+            try {
+                // ۱. اول UUID ثبت شود
+                OnlineCounter.registerVisit(context)
+
+                // ۲. سپس تعداد خوانده شود
                 val count = OnlineCounter.getOnlineCount()
                 _onlineCount.value = count
             } catch (e: Exception) {
