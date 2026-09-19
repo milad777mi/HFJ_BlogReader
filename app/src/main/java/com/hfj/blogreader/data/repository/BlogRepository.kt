@@ -27,7 +27,7 @@ data class FirstPageResult(
 
 class BlogRepository(private val context: Context) {
 
-    private val baseUrl = "https://bllosoft-glade-6b08.bnmkiio180.workers.dev/"
+    private val baseUrl = "https://hfgapi77777.blogfa.com/"
     
     private val db = AppDatabase.getInstance(context)
     private val postDao = db.postDao()
@@ -54,14 +54,42 @@ class BlogRepository(private val context: Context) {
     }
 
     // ============================================================
-    // ✅ استخراج config از Document (بدون درخواست اضافه)
+    // ✅ استخراج config از Document
+    //   ۱. اول meta tag (Worker)
+    //   ۲. اگه نبود، متغیر JS (بلاگفا)
     // ============================================================
     private fun extractConfigFromDoc(doc: Document): HfjConfig? {
-        return try {
-            val meta = doc.select("meta[name=hfj-config]").first() ?: return null
-            val json = meta.attr("content")
-            if (json.isBlank()) return null
+        // ۱. meta tag (Worker)
+        try {
+            val meta = doc.select("meta[name=hfj-config]").first()
+            if (meta != null) {
+                val json = meta.attr("content")
+                if (json.isNotBlank()) {
+                    parseConfigFromJson(json)?.let { return it }
+                }
+            }
+        } catch (e: Exception) {
+            // ادامه بده به چک دوم
+        }
 
+        // ۲. متغیر JS (بلاگفا): var hfj_config = { ... };
+        try {
+            doc.select("script").forEach { script ->
+                val text = script.data()
+                if (text.contains("hfj_config")) {
+                    parseConfigFromJsVariable(text)?.let { return it }
+                }
+            }
+        } catch (e: Exception) {
+            // هیچی
+        }
+
+        return null
+    }
+
+    // ✅ پارس JSON (برای meta tag و متن JS)
+    private fun parseConfigFromJson(json: String): HfjConfig? {
+        return try {
             val appOpen  = extractLongFromJson(json, "appOpenMs")
             val refresh  = extractLongFromJson(json, "refreshMs")
             val loadMore = extractLongFromJson(json, "loadMoreMs")
@@ -77,6 +105,16 @@ class BlogRepository(private val context: Context) {
             } else {
                 null
             }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // ✅ پارس متغیر JS: var hfj_config = { ... };
+    private fun parseConfigFromJsVariable(text: String): HfjConfig? {
+        return try {
+            val match = Regex("""hfj_config\s*=\s*(\{[^}]+\})""").find(text) ?: return null
+            parseConfigFromJson(match.groupValues[1])
         } catch (e: Exception) {
             null
         }
