@@ -9,7 +9,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.mmsnet.bnmh"
+        applicationId = "com.mmsnet.bnmk"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
